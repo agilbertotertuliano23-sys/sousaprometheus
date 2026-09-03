@@ -34,3 +34,6 @@ raw-assets/
 
 # Memória de agentes (AIOX) — não faz parte da documentação do produto
 **/.claude/agent-memory/
+
+# preview console servido em dev (fonte: dev/console.html)
+public/console.html

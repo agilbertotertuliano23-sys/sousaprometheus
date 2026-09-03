@@ -1,0 +1,147 @@
+---
+/**
+ * CardExpansivel — card que expande no lugar (inspirado no ExpandableCards do
+ * smoothui, mas no stack do PROMETEUS: Astro puro, **zero JS**).
+ *
+ * `<details name>` = accordion exclusivo por sessão (1 aberto por vez, nativo).
+ * Sem JS funciona (RNF-04): `<details>` é nativo; os links de detalhe/saída são
+ * âncoras. Animação de abertura só sob `prefers-reduced-motion: no-preference`
+ * e só onde o browser suporta `::details-content` — senão abre instantâneo
+ * (RNF-08). Nenhum `<script>`, nenhuma dependência.
+ *
+ * Nota de arquitetura: o ADR-007 (alt. C8) preferiu a tela de detalhe dedicada a
+ * "expandir no lugar". Este componente é um preview leve — o botão "Ver detalhe"
+ * continua levando à `#tela-detalhe`. Se ficar como padrão do grid, atualizar
+ * ADR-007/ADR-008.
+ */
+import type { Produto } from '../../data/tipos';
+import { galeriaDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco, percentualDesconto } from '../../lib/utils';
+
+interface Props {
+  produto: Produto;
+  slug: string;
+  cta: string;
+  /** grupo do accordion exclusivo (<details name>) — 1 card aberto por vez. */
+  grupo?: string;
+}
+
+const { produto, slug, cta, grupo } = Astro.props;
+const capa = galeriaDe(produto)[0];
+const capaSrc = capa && capa.tipo === 'imagem' ? capa.src : produto.imagem;
+const capaAlt = capa?.alt ?? produto.nome;
+const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentavos);
+const beneficios = (produto.beneficios ?? []).slice(0, 2);
+---
+<details class="card-exp" name={grupo} data-sku={produto.sku}>
+  <summary class="card-exp-topo">
+    <span class="card-exp-midia">
+      <img src={urlAsset(slug, capaSrc)} alt={capaAlt} loading="lazy" decoding="async" width="96" height="171" />
+      {desconto > 0 && <span class="tarja">-{desconto}%</span>}
+    </span>
+    <span class="card-exp-cab">
+      <span class="card-exp-nome">{produto.nome}</span>
+      <span class="card-exp-preco">
+        <strong>{formatarPreco(produto.precoCentavos)}</strong>
+        {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
+      </span>
+    </span>
+    <span class="card-exp-seta" aria-hidden="true"></span>
+  </summary>
+
+  <div class="card-exp-corpo">
+    <p class="card-exp-desc">{produto.descricaoCurta}</p>
+    {beneficios.length > 0 && (
+      <ul class="card-exp-benef">
+        {beneficios.map((b) => <li>{b}</li>)}
+      </ul>
+    )}
+    <div class="card-exp-acoes">
+      <a class="card-exp-detalhe" href={`#produto-${produto.sku}`} data-ir="detalhe" data-sku={produto.sku}>Ver detalhe</a>
+      <a class="card-exp-cta" href={produto.url} target="_blank" rel="noopener nofollow" data-sku={produto.sku}>{cta} ›</a>
+    </div>
+  </div>
+</details>
+<style>
+  .card-exp {
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: var(--card-raio, var(--raio));
+    overflow: hidden;
+  }
+  .card-exp[open] { border-color: color-mix(in srgb, var(--acento) 45%, var(--linha)); }
+
+  .card-exp-topo {
+    display: grid;
+    grid-template-columns: 96px 1fr auto;
+    gap: var(--sp-3);
+    align-items: center;
+    padding: var(--sp-3);
+    min-height: var(--toque-min);
+    cursor: pointer;
+    list-style: none;
+  }
+  .card-exp-topo::-webkit-details-marker { display: none; }
+
+  .card-exp-midia { position: relative; display: block; }
+  .card-exp-midia img {
+    width: 96px;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio-sm);
+    background: var(--superficie-alta);
+  }
+  .tarja {
+    position: absolute; top: var(--sp-1); left: var(--sp-1);
+    background: var(--acento); color: #fff;
+    font-family: var(--f-mono); font-size: 0.6875rem;
+    padding: 1px var(--sp-1); border-radius: 999px;
+  }
+  .card-exp-nome { font-family: var(--f-display); font-size: var(--fs-1); line-height: var(--lh-tight); }
+  .card-exp-preco { display: flex; align-items: baseline; gap: var(--sp-2); margin-top: var(--sp-1); }
+  .card-exp-preco strong { font-family: var(--f-mono); }
+  .card-exp-preco s { color: var(--texto-fraco); font-size: var(--fs-00); }
+  .card-exp-seta { align-self: start; font-family: var(--f-mono); color: var(--texto-fraco); font-size: var(--fs-2); }
+  .card-exp-seta::after { content: '\002B'; }
+  .card-exp[open] .card-exp-seta { color: var(--acento); }
+  .card-exp[open] .card-exp-seta::after { content: '\2212'; }
+
+  .card-exp-corpo {
+    padding: var(--sp-3);
+    display: flex; flex-direction: column; gap: var(--sp-3);
+    border-top: 1px solid var(--linha);
+  }
+  .card-exp-desc { color: var(--texto-fraco); font-size: var(--fs-00); margin: 0; }
+  .card-exp-benef {
+    margin: 0; padding-left: var(--sp-6);
+    display: flex; flex-direction: column; gap: var(--sp-1);
+    font-size: var(--fs-00);
+  }
+  .card-exp-acoes { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .card-exp-detalhe, .card-exp-cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--toque-min); padding-inline: var(--sp-4);
+    border-radius: var(--raio-sm); font-size: var(--fs-00);
+  }
+  .card-exp-detalhe { border: 1px solid var(--linha); color: var(--texto-fraco); }
+  .card-exp-cta {
+    flex: 1;
+    background: var(--acento); color: #fff; /* RNF-07: AA sobre #1E6FFF */
+    font-family: var(--f-display); font-weight: 600;
+  }
+
+  /* Reveal só onde suportado e sem reduced-motion — senão abre instantâneo. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (interpolate-size: allow-keywords) {
+      .card-exp::details-content {
+        block-size: 0;
+        overflow: clip;
+        transition:
+          block-size var(--ref-fade, 220ms) var(--ease-out, ease),
+          content-visibility var(--ref-fade, 220ms) allow-discrete;
+      }
+      .card-exp[open]::details-content { block-size: auto; }
+    }
+  }
+</style>
