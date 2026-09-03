@@ -21,10 +21,10 @@ Trilhas de arquitetura: [`08 — catálogo categorizado`](../architecture/08-cat
 | Épico | Tema | Estado | Requisitos-chave |
 |---|---|---|---|
 | [E1](E1-fundacao-e-console.md) | Fundação estática + console CLI | ✅ de pé | M1, M4, M5 · RF-01, RF-08, RNF-10/11/12 |
-| [E2](E2-catalogo-categorizado-e-curadoria.md) | Catálogo categorizado + curadoria (schema novo, `catalog validate`, console) | 🟠 schema a implementar | M2, M8 · RF-02/03/10/11, RF-08.3 |
-| [E3](E3-personalizacao-por-url.md) | `?n=` / `?c=` / `?o=` no cliente (núcleo intacto; efeito cresce para as 3 telas) | 🟠 parcial | M6, S1, S2, S3 · RF-05/06/07 |
-| [E4](E4-compartilhamento-seo-publicacao.md) | OG por nicho, rota `/n/<slug>`, sitemap, `deploy-check` | ⬜ não iniciado | S4, S5, S6, C2, C3 · RF-09 |
-| [E5](E5-camada-de-apresentacao-rica.md) | **novo** — galeria, specs, benefícios, sistema de blocos + componentes | ⬜ não iniciado | M9 · RF-12/13/14, RNF-14 |
+| [E2](E2-catalogo-categorizado-e-curadoria.md) | Catálogo categorizado + curadoria (schema novo, `catalog validate`, console) | 🟠 E2-03 ✅; E2-04 aberta; E2-01/02 bloqueadas | M2, M8 · RF-02/03/10/11, RF-08.3 |
+| [E3](E3-personalizacao-por-url.md) | `?n=` / `?c=` / `?o=` no cliente (núcleo intacto; efeito cresce para as 3 telas) | 🟠 parcial — E3-01 reescopada (porta + blocos) | M6, S1, S2, S3 · RF-05/06/07 |
+| [E4](E4-compartilhamento-seo-publicacao.md) | OG por nicho, rota `/n/<slug>`, sitemap, `deploy-check` | ⬜ não iniciado (depende de E6-03) | S4, S5, S6, C2, C3 · RF-09 |
+| [E5](E5-camada-de-apresentacao-rica.md) | **novo** — galeria, specs, benefícios, sistema de blocos + componentes | 🟠 E5-01 ✅; E5-02 detalhada; E5-03 aberta | M9 · RF-12/13/14, RNF-14 |
 | [E6](E6-fluxo-de-tres-telas.md) | **reescopado (ADR-008 F0)** — porta do catálogo → trilhas de produto + info → detalhe, como estado no cliente; degradação sem JS | 🟠 E6-01/02 ✅; E6-03/04/05/06 abertas | M10 · RF-15/16, RNF-04/13 |
 
 ## Por que esta estrutura

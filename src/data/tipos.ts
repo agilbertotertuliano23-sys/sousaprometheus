@@ -204,15 +204,20 @@ export interface Nicho {
 
   /** categorias curadas, na ordem de navegação. Ausente → trilha única sintética. */
   categorias?: Categoria[];
-  /** conteúdo da tela de entrada (capa editorial). Tudo opcional, com defaults. */
+  /** conteúdo da tela de entrada (a "porta do catálogo" — ADR-008 Fase 0).
+   *  Tudo opcional, com defaults derivados. */
   entrada?: {
     /** ex.: "VITRINE Nº 07". Default: "VITRINE · " + nome. */
     kicker?: string;
-    /** sku que sangra na capa. Default: herói da vitrine. */
+    /** 1 parágrafo de proposta na porta. Default: `subtitulo`. (ADR-008 Fase 0) */
+    proposta?: string;
+    /** sku que sangra na capa. Default: herói da vitrine. (Conceito E4 — legado;
+     *  na Fase 0 a porta usa um mosaico derivado das categorias.) */
     heroiSku?: string;
-    /** ex.: "a partir de R$ 39,90". Default: derivado do menor preço. */
+    /** ex.: "a partir de R$ 39,90". Default: derivado do menor preço. (legado E4;
+     *  a porta da Fase 0 mostra a linha de organização, não preço.) */
     teaserPreco?: string;
-    /** rótulo do CTA da capa. Default: "Ver a vitrine". */
+    /** rótulo do CTA da porta. Default: "Entrar no catálogo". */
     chamada?: string;
   };
   /** regra por bucket de criativo. Sem `b` → variante 'b' idêntica à 'a'. */

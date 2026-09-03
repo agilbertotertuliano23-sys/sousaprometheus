@@ -44,13 +44,9 @@ img, video { max-width: 100%; display: block; }
 /* E6-02 — gate `html.js` da máquina de telas.
    O controlador (src/lib/navegacao/telas.ts) adiciona `html.js` como 1ª ação.
    Sem JS (ou se ele falhar) nenhuma regra prefixada abaixo casa: as 3 telas
-   ficam empilhadas e navegáveis por âncora, idêntico a E6-01. */
-
-/* A VitrineFoco tem `hidden` estático (E6-01). Sem esta regra, o
-   `.vitrine-foco { display:flex }` do componente venceria o `[hidden]` do
-   user-agent (regra de autor > UA) e a seção apareceria empilhada mesmo
-   sem JS. Especificidade #id .classe[attr] vence o `.vitrine-foco` scoped. */
-#tela-vitrine .vitrine-foco[hidden] { display: none; }
+   ficam empilhadas e navegáveis por âncora, idêntico a E6-01.
+   (ADR-008 Fase 0: a `#tela-vitrine` é blocos 2a/2b/2c + informações — a grade
+   fica sempre visível; não há mais `VitrineFoco` nem swap.) */
 
 /* Só a tela ativa aparece — SÓ sob html.js. */
 html.js #app > .tela { display: none; }

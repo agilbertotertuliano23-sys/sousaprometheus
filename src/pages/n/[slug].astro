@@ -1,24 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
-import GradeCatalogo from '../../components/GradeCatalogo/GradeCatalogo.astro';
+import SecaoUnica from '../../components/SecaoUnica.astro';
 import { SLUGS, resolverNicho } from '../../data/nichos';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STUB — Rota estática por nicho (`/n/<slug>`). Épico E4 / Could C-3 / Risco R-06.
+// Rota estática por nicho (`/n/<slug>`) — E6-03. Usa a MESMA seção única de `/`,
+// buildada com o nicho da rota. O markup mora em SecaoUnica.astro (fonte única).
 //
-// Motivo de existir: SEO (uma URL indexável por nicho) e evitar que todo nicho
-// pague o custo de bundle de todos os outros no futuro. A raiz `/` continua
-// sendo o caminho principal, personalizado no cliente pela query string.
-//
-// O QUE FALTA IMPLEMENTAR (você):
-//   1. OG/canonical por nicho — usar src/lib/seo/og.ts (RF-09).
-//   2. Decidir se esta rota também aceita ?c=/?o= no cliente (provavelmente sim,
-//      reaproveitando src/lib/personalizacao/contexto.ts).
-//   3. Confirmar com D-02 (lista de nichos de lançamento) se `/n/` entra no MVP
-//      ou fica para depois — hoje é só andaime.
-//   4. Adicionar ao sitemap (src/pages/sitemap.xml.ts).
-// ─────────────────────────────────────────────────────────────────────────────
-
+// TODO(E4-01): OG/canonical por nicho (src/lib/seo/og.ts).
+// TODO(E4-02): incluir estas rotas em src/pages/sitemap.xml.ts.
 export function getStaticPaths() {
   return SLUGS.map((slug) => ({ params: { slug } }));
 }
@@ -28,13 +17,7 @@ const nicho = resolverNicho(slug);
 ---
 <Base titulo={nicho.og?.titulo ?? nicho.titulo} descricao={nicho.og?.descricao ?? nicho.subtitulo}>
   <main class="pagina">
-    <header class="topo">
-      <p class="rotulo" data-slot="kicker">PROMETEUS</p>
-      <h1 data-slot="titulo">{nicho.titulo}</h1>
-      <p class="sub" data-slot="subtitulo">{nicho.subtitulo}</p>
-    </header>
-
-    <GradeCatalogo nicho={nicho} />
+    <SecaoUnica nicho={nicho} />
 
     <footer class="rodape">
       <p class="rotulo">Catálogo de vitrine · sem checkout próprio</p>
@@ -43,8 +26,5 @@ const nicho = resolverNicho(slug);
 </Base>
 
 <style>
-  .topo { margin-bottom: var(--sp-8); }
-  .topo h1 { font-size: var(--fs-4); margin: var(--sp-2) 0; }
-  .sub { color: var(--texto-fraco); }
   .rodape { margin-top: var(--sp-8); padding-top: var(--sp-4); border-top: 1px solid var(--linha); }
 </style>

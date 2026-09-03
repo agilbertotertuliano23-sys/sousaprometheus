@@ -57,3 +57,42 @@ card já nasce com `min-height: var(--toque-min)`.
 
 `--largura-pagina: 480px` — coluna de leitura. `.pagina` centraliza e aplica
 padding. Grade: 1 coluna até 560px, 2 acima.
+
+## Trilha / carrossel (ADR-008 Fase 0)
+
+A `#tela-vitrine` é uma pilha de **blocos** ([`architecture/09`](../architecture/09-fluxo-de-telas-e-apresentacao.md)
+§1). Cada bloco de produtos é uma **trilha**: `<h2>` + faixa horizontal rolável
+de minis.
+
+- **Faixa:** `display: flex; gap: var(--trilha-gap); overflow-x: auto;
+  scroll-snap-type: x proximity; overscroll-behavior-x: contain`. Cada mini
+  `scroll-snap-align: start; flex: 0 0 auto`.
+- **`scroll-behavior: smooth`** e qualquer `transform` de foco de card ficam sob
+  `@media (prefers-reduced-motion: no-preference)` (RNF-08). Sem movimento, a
+  faixa continua rolável (é navegação, não decoração).
+- **`overscroll-behavior-x: contain`** é obrigatório — sem ele o `scroll-snap`
+  horizontal sequestra o gesto "voltar" do webview do TikTok
+  ([`architecture/09`](../architecture/09-fluxo-de-telas-e-apresentacao.md) §5).
+- **Carrossel com biblioteca (Embla, `^8.6`)** só quando o `scroll-snap` nativo
+  não bastar, por **import dinâmico** ao entrar em viewport — nunca no caminho
+  crítico (RNF-03). A decisão fica com a medição de **E6-06**.
+- **Espaço entre blocos:** `margin-block: var(--bloco-espaco)`.
+- **Trilha vazia:** o `<h2 id="cat-<id>">` é renderizado mesmo assim (âncora de
+  navegação) + uma linha de estado vazio.
+
+### Tokens de componente
+
+Camada `COMPONENTE` de [`tokens.css`](tokens.css). Herdam de um semântico/
+primitivo e podem ser afinados por `data-nicho` / `data-grupo` — o componente
+**nunca** hard-coda cor ou espaçamento (princípio 4 do [`README`](README.md)).
+
+| Token | Herda | Uso |
+|---|---|---|
+| `--bloco-espaco` | `--sp-6` | respiro vertical entre blocos |
+| `--trilha-gap` | `--sp-3` | gap entre minis na faixa |
+| `--card-raio` | `--raio` | forma do card/mini por nicho/bloco |
+| `--cat-acento` *(Fase 1)* | `--acento` | tint de um grupo de categoria |
+| `--ref-fade` *(Fase 1)* | `200ms` | cross-fade do referenciamento (0 em reduced-motion) |
+
+> **Sync:** ao implementar (E6-05), `src/styles/tokens.css` recebe a cópia
+> byte a byte desta camada nova (ADR-006 / [`architecture/06`](../architecture/06-estrutura-de-diretorios.md)).

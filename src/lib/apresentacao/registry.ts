@@ -17,6 +17,7 @@ import VOCABULARIO from './tipos-bloco.json';
 import BlocoTexto from '../../components/blocos/BlocoTexto.astro';
 import BlocoMidia from '../../components/blocos/BlocoMidia.astro';
 import BlocoDepoimento from '../../components/blocos/BlocoDepoimento.astro';
+import BlocoSpecs from '../../components/blocos/BlocoSpecs.astro';
 
 /** Vocabulário de tipos de bloco (fonte única — `tipos-bloco.json`). */
 export const TIPOS_BLOCO = VOCABULARIO as readonly TipoBloco[];
@@ -29,5 +30,5 @@ export const REGISTRY: Record<TipoBloco, unknown> = {
   comparativo: null, // E5-03
   bonus: null, // E5-03
   faq: null, // E5-03
-  specs: null, // E5-02
+  specs: BlocoSpecs, // E5-02 ✔
 };

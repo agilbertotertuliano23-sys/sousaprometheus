@@ -1,0 +1,73 @@
+---
+/**
+ * TrilhaProdutos — E6-05 (ADR-008 Fase 0). Faixa horizontal rolável de minis:
+ * `<h2>` + kicker/descrição opcionais + `<ol class="trilha-carrossel">`.
+ *
+ * Usada pelo Bloco 2a ("Em alta", cross-categoria) e por cada categoria efetiva
+ * (Bloco 2b, com `id="cat-<id>"` — a âncora que a porta e `telas.ts` usam).
+ *
+ * `scroll-snap` nativo (Embla só se o slice de medição E6-06 pedir). Astro puro,
+ * sem `<script>`. Trilha vazia ainda renderiza o `<h2 id>` (âncora resolve).
+ */
+import type { Produto } from '../../data/tipos';
+import MiniProduto from './MiniProduto.astro';
+
+interface Props {
+  titulo: string;
+  produtos: Produto[];
+  slug: string;
+  id?: string;
+  kicker?: string;
+  descricao?: string;
+}
+
+const { titulo, produtos, slug, id, kicker, descricao } = Astro.props;
+---
+<section class="trilha" id={id}>
+  <h2 class="trilha-titulo">{titulo}</h2>
+  {kicker && <p class="trilha-kicker rotulo">{kicker}</p>}
+  {descricao && <p class="trilha-descricao">{descricao}</p>}
+  {produtos.length > 0 ? (
+    <ol class="trilha-carrossel">
+      {produtos.map((p) => (
+        <li><MiniProduto produto={p} slug={slug} /></li>
+      ))}
+    </ol>
+  ) : (
+    <p class="trilha-vazia">Nada nesta categoria por enquanto.</p>
+  )}
+</section>
+<style>
+  .trilha { margin-block: var(--bloco-espaco, var(--sp-6)); }
+  .trilha-titulo { font-size: var(--fs-2); }
+  .trilha-kicker { margin: var(--sp-1) 0 0; }
+  .trilha-descricao {
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+    margin: var(--sp-1) 0 0;
+  }
+  .trilha-carrossel {
+    list-style: none;
+    margin: var(--sp-3) 0 0;
+    padding: 0;
+    display: flex;
+    gap: var(--trilha-gap, var(--sp-3));
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-block: var(--sp-2);
+  }
+  .trilha-carrossel > li {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+  .trilha-vazia {
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+    margin: var(--sp-3) 0 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .trilha-carrossel { scroll-behavior: smooth; }
+  }
+</style>

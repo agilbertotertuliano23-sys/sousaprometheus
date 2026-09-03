@@ -1,0 +1,42 @@
+---
+/**
+ * BlocoSpecs — E5-02. Bloco declarativo de especificações (RF-13.2 / RF-14).
+ * Astro puro, sem JS. Entra no fluxo dos blocos pelo REGISTRY; `blocosDe` faz o
+ * prepend sintético a partir de `produto.specs` quando não há um explícito
+ * (doc 08 §4.7).
+ */
+import type { BlocoSpecs } from '../../data/tipos';
+
+interface Props {
+  bloco: BlocoSpecs;
+  slug?: string;
+}
+
+const { bloco } = Astro.props;
+---
+<section class="bloco bloco-specs" id={bloco.id}>
+  <h3 class="bloco-titulo">{bloco.titulo ?? 'Especificações'}</h3>
+  <dl class="specs">
+    {bloco.pares.map((par) => (
+      <div class="specs-linha">
+        <dt>{par.chave}</dt>
+        <dd>{par.valor}</dd>
+      </div>
+    ))}
+  </dl>
+</section>
+<style>
+  .bloco { margin-block: var(--sp-6); }
+  .bloco-titulo { font-size: var(--fs-2); margin-bottom: var(--sp-2); }
+  .specs { margin: 0; display: flex; flex-direction: column; }
+  .specs-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--linha);
+  }
+  .specs-linha:last-child { border-bottom: 0; }
+  .specs dt { color: var(--texto-fraco); font-size: var(--fs-00); }
+  .specs dd { margin: 0; font-family: var(--f-mono); font-size: var(--fs-00); text-align: right; }
+</style>

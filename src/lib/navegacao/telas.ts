@@ -159,27 +159,12 @@ function elTela(tela: Tela): HTMLElement | null {
 }
 
 /**
- * Limpa `.ativo`/`aria-current` de todos os chips. Se `naVitrine`, marca o chip
- * de `cat` (ou o primeiro, quando `cat` ausente) — CA 6.
+ * Elemento da trilha de uma categoria: `<section id="cat-<id>">` do Bloco 2b
+ * (ADR-008 Fase 0). Null se a categoria não existe nesta build. Substitui o
+ * `marcarChip` de E6-01 — na Fase 0 não há chips de `TrilhaCategorias`.
  */
-function marcarChip(naVitrine: boolean, cat?: string): void {
-  const chips = document.querySelectorAll<HTMLElement>(
-    '#tela-vitrine .trilha .chip',
-  );
-  chips.forEach((c) => {
-    c.classList.remove('ativo');
-    c.removeAttribute('aria-current');
-  });
-  if (!naVitrine) return;
-  const alvo = cat
-    ? document.querySelector<HTMLElement>(
-        `#tela-vitrine .trilha .chip[data-cat="${esc(cat)}"]`,
-      )
-    : chips[0] ?? null;
-  if (alvo) {
-    alvo.classList.add('ativo');
-    alvo.setAttribute('aria-current', 'true');
-  }
+function elCategoria(cat: string): HTMLElement | null {
+  return document.getElementById(`cat-${cat}`);
 }
 
 /** Limpa `.ativo` de todos os <article> de detalhe; devolve o <article> do `sku` (ou null). */
@@ -239,29 +224,26 @@ export function aplicarEstado(
     marcarArtigo(undefined);
   }
 
-  // `cat` que não casa nenhum chip → mantém a vitrine, cai no primeiro chip.
+  // `cat` que não casa nenhuma trilha → mantém a vitrine, sem alvo de categoria.
   let catEfetiva = efetivo.tela === 'vitrine' ? efetivo.cat : undefined;
-  if (catEfetiva) {
-    const chip = document.querySelector(
-      `#tela-vitrine .trilha .chip[data-cat="${esc(catEfetiva)}"]`,
-    );
-    if (!chip) catEfetiva = undefined;
-  }
+  if (catEfetiva && !elCategoria(catEfetiva)) catEfetiva = undefined;
 
   app.dataset.tela = efetivo.tela;
-  marcarChip(efetivo.tela === 'vitrine', catEfetiva);
 
   if (efetivo.tela === 'detalhe' && articleAtivo) {
     religarVideo(articleAtivo);
   }
 
   const tela = elTela(efetivo.tela);
+  const secaoCat = catEfetiva ? elCategoria(catEfetiva) : null;
   const alvoScroll: HTMLElement | null =
-    efetivo.tela === 'detalhe' && articleAtivo ? articleAtivo : tela;
+    efetivo.tela === 'detalhe' && articleAtivo
+      ? articleAtivo
+      : secaoCat ?? tela;
   const alvoFoco: HTMLElement | null =
     efetivo.tela === 'detalhe' && articleAtivo
       ? articleAtivo
-      : tela?.querySelector<HTMLElement>('h1, h2, h3') ?? tela;
+      : secaoCat ?? tela?.querySelector<HTMLElement>('h1, h2, h3') ?? tela;
 
   focar(alvoFoco);
 
@@ -355,17 +337,8 @@ export function ligarNavegacaoTelas(): void {
   // gate nunca ativaria e a página seguiria empilhada (resiliência — CA 10).
   document.documentElement.classList.add('js');
 
-  // Swap da vitrine, uma vez e IMPERATIVAMENTE (não por CSS): com JS a
-  // `VitrineFoco` assume; a `GradeCatalogo` (fallback sem-JS) sai. Se `telas.ts`
-  // falhar depois, a grade continua sendo o fallback.
-  document
-    .querySelector('#tela-vitrine .vitrine-foco')
-    ?.removeAttribute('hidden');
-  (
-    document.querySelector(
-      '#tela-vitrine .grade-catalogo',
-    ) as HTMLElement | null
-  )?.setAttribute('hidden', '');
+  // ADR-008 Fase 0: sem swap. A `#tela-vitrine` é blocos 2a/2b/2c + informações;
+  // a `GradeCatalogo` (Bloco 2c) fica sempre visível. `VitrineFoco` não existe.
 
   const inicial = estadoInicial();
   aplicarEstado(inicial, {

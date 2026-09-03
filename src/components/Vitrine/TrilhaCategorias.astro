@@ -1,8 +1,11 @@
 ---
 /**
+ * @deprecated ADR-008 Fase 0 — fora da página. Na Fase 0 as categorias são as
+ * trilhas de produto do Bloco 2b (`<section id="cat-<id>">` com seu `<h2>`), não
+ * chips. Mantido no repo: pode voltar como navegação do Bloco 1 na Fase 1
+ * (E7). NÃO importar.
+ *
  * TrilhaCategorias — E6-01 (RF-10.4). Faixa de chips, um por categoria efetiva.
- * Sem JS já funciona: cada chip é uma âncora `#cat-<id>` para o heading da grade.
- * `data-cat`/`data-ir` são hooks inertes para E6-02 ligar filtro/estado.
  */
 import type { Nicho } from '../../data/tipos';
 import { resolverCategorias } from '../../lib/catalogo/resolver';

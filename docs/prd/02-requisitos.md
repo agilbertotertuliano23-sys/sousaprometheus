@@ -5,6 +5,13 @@
 > Trilha do modelo em [`../architecture/08`](../architecture/08-catalogo-categorizado.md);
 > trilha do fluxo em [`../architecture/09`](../architecture/09-fluxo-de-telas-e-apresentacao.md).
 
+> **Revisão 2026-09-02 ([ADR-008](../architecture/decisions/adr-008-catalogo-como-pagina-rica-de-secoes.md) Fase 0).**
+> Só **texto** ajustado (nenhum RF novo na Fase 0): **RF-05.1**, **RF-10.4** e
+> **RF-15.5** trocam "capa editorial / herói em foco / chips" por "porta do
+> catálogo / trilha em alta + trilhas por categoria / `<h2 id="cat-<id>">`".
+> Os RF novos da Fase 1 (grupos, estilos, referenciamento) entram no cascade
+> pós-portões (ADR-008 §7).
+
 ## Funcionais
 
 ### RF-01 — Página única
@@ -42,10 +49,11 @@
   só toca na regra do RNF-05 quando o produto é o herói em foco.
 
 ### RF-05 — Personalização: nicho (`?n=`)
-- RF-05.1 *(ajustado)* — `?n=<slug>` válido troca, no cliente: `--acento`,
-  `data-nicho`, e reescreve **as 3 telas** — entrada (capa editorial), vitrine
-  (trilha de categorias + herói + miniaturas) e detalhe (galeria + blocos) — a
-  partir de `NICHOS[slug]` resolvido.
+- RF-05.1 *(ajustado — ADR-008 F0)* — `?n=<slug>` válido troca, no cliente:
+  `--acento`, `data-nicho`, e reescreve **as 3 telas** — entrada (**porta do
+  catálogo**), vitrine (**trilha "em alta" + uma trilha por categoria + grade +
+  informações**) e detalhe (galeria + blocos) — a partir de `NICHOS[slug]`
+  resolvido.
 - RF-05.2 — Ausente ou inválido → nicho padrão; a página buildada continua
   válida (degradação graciosa).
 - RF-05.3 — Sem `?n=`, tenta o último nicho salvo em `localStorage`
@@ -93,8 +101,12 @@
 - RF-10.3 — Produto sem `categoria` (ou com id inexistente) entra numa categoria
   sintética `_outros`, sempre ao fim da trilha. Nicho sem `categorias`
   declaradas opera com uma trilha única sintética `_tudo`.
-- RF-10.4 — A vitrine navega por categoria (trilha de chips/abas ≥ 44px). Sem
-  JS, a trilha é uma `<nav>` de âncoras para os headings de categoria da grade.
+- RF-10.4 *(ajustado — ADR-008 F0)* — A vitrine navega por categoria: cada
+  categoria efetiva é uma **trilha de produtos** `<section id="cat-<id>">` com
+  seu `<h2>` (rótulo ≥ 44px de alvo tocável). As âncoras (`#cat-<id>`, do mosaico
+  da porta e de `telas.ts`) apontam essa `<section>`. Sem JS, é a mesma pilha de
+  trilhas + a grade (Bloco 2c). *(Chips/abas de `TrilhaCategorias` saem na Fase 0;
+  podem voltar como navegação do Bloco 1 na Fase 1.)*
 
 ### RF-11 — Ordenação curada *(novo — ADR-007)*
 - RF-11.1 — Cada `Produto` pode declarar `prioridade` — inteiro `0..100`,
@@ -145,9 +157,12 @@
 - RF-15.4 — Numa revisita (há `localStorage['prometeus:ultimo-nicho']`, sem `?n=`
   novo e sem hash), o fluxo pode começar na vitrine. 1ª visita sempre vê a
   entrada.
-- RF-15.5 — A tela de entrada é a capa editorial (`nicho.entrada`): kicker,
-  título display, herói sangrando, teaser de preço, CTA no `--acento`. Todos os
-  campos têm default derivado.
+- RF-15.5 *(ajustado — ADR-008 F0)* — A tela de entrada é a **porta do catálogo**
+  (`nicho.entrada`): kicker, título display, **parágrafo de proposta**, **linha de
+  organização** ("N produtos · M categorias"), **mosaico curado de capas**
+  (derivado dos produtos herói de cada categoria), CTA no `--acento`. Todos os
+  campos têm default derivado. *(O "herói sangrando" e o "teaser de preço" da
+  redação anterior — conceito E4 — foram substituídos.)*
 
 ### RF-16 — Degradação do fluxo sem JS *(novo — ADR-007)*
 - RF-16.1 — O HTML buildado contém todas as telas do nicho padrão: entrada +

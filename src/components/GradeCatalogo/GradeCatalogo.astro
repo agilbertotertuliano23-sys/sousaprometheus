@@ -1,11 +1,11 @@
 ---
 /**
- * GradeCatalogo — E6-01. Agrupa por categoria efetiva (doc 08 §4.1/§4.2).
- * É o fallback sem-JS da vitrine (doc 09 §1): sem JS fica visível; E6-02 a
- * esconde sob `html.js` quando a `VitrineFoco` assume.
+ * GradeCatalogo — E6-01, ajustada por E6-05 (ADR-008 Fase 0). Agrupa por
+ * categoria efetiva (doc 08 §4.1/§4.2). É o **Bloco 2c** da `#tela-vitrine` e o
+ * fallback sem-JS de todo o Bloco 2 — fica sempre visível.
  *
- * Cada categoria efetiva ganha um `<h2 id="cat-<id>">` — renderizado MESMO se o
- * grupo estiver vazio, porque a âncora da trilha precisa resolver.
+ * Headings usam `id="grade-cat-<id>"` (NÃO `cat-<id>`): a âncora `#cat-<id>`
+ * pertence à `<section>` de trilha do Bloco 2b (doc 09 §2, nota).
  */
 import type { Nicho } from '../../data/tipos';
 import { resolverCategorias, produtosPorCategoria } from '../../lib/catalogo/resolver';
@@ -23,7 +23,7 @@ const grupos = produtosPorCategoria(nicho, variante);
 <div class="grade-catalogo">
   {categorias.map((cat) => (
     <section class="grade-cat">
-      <h2 id={`cat-${cat.id}`} class="grade-cat-titulo">{cat.rotulo}</h2>
+      <h2 id={`grade-cat-${cat.id}`} class="grade-cat-titulo">{cat.rotulo}</h2>
       {cat.descricao && <p class="grade-cat-desc">{cat.descricao}</p>}
       <div class="grade">
         {(grupos.get(cat.id) ?? []).map((p) => (

@@ -1,0 +1,68 @@
+---
+/**
+ * BlocoInformacoes — E6-05 (ADR-008 Fase 0, RF-09.2 / RNF-09). Rodapé de
+ * conteúdo: curadoria, como comprar, compartilhar, voltar ao topo, privacidade.
+ *
+ * Fase 0: copy fixa (D-15) — sem campo `nicho.info`, sem prova social (nada de
+ * claim sem dado verdadeiro). Botão compartilhar entra `hidden`; E4-04 liga o
+ * `navigator.share` e o revela onde a API existe.
+ *
+ * Astro puro, sem `<script>`.
+ */
+import type { Nicho } from '../../data/tipos';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+---
+<footer class="info" aria-label="Informações" data-nicho={nicho.slug}>
+  <h2 class="info-titulo">Sobre esta vitrine</h2>
+
+  <div class="info-item">
+    <h3>Curadoria</h3>
+    <p>Os produtos desta vitrine foram selecionados por pesquisa e potencial de venda.</p>
+  </div>
+
+  <div class="info-item">
+    <h3>Como comprar</h3>
+    <p>Ao tocar em um produto você vai para a loja parceira. Preço e disponibilidade são de lá.</p>
+  </div>
+
+  <div class="info-acoes">
+    <button type="button" class="info-share" data-share hidden>Compartilhar</button>
+    <a class="info-topo" href="#tela-entrada" data-ir="entrada">Voltar ao topo</a>
+  </div>
+
+  <p class="info-privacidade rotulo">Esta vitrine não coleta dados.</p>
+</footer>
+<style>
+  .info {
+    margin-top: var(--bloco-espaco, var(--sp-8));
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--linha);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .info-titulo { font-size: var(--fs-2); }
+  .info-item h3 { font-size: var(--fs-1); }
+  .info-item p { color: var(--texto-fraco); font-size: var(--fs-00); margin: var(--sp-1) 0 0; }
+  .info-acoes { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+  .info-share,
+  .info-topo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--toque-min);
+    padding-inline: var(--sp-4);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-sm);
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+    background: none;
+    font-family: inherit;
+  }
+  .info-privacidade { color: var(--texto-fraco); }
+</style>

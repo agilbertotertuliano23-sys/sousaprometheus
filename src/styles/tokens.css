@@ -57,4 +57,20 @@
 
   /* largura máxima de leitura — 1 coluna no celular */
   --largura-pagina: 480px;
+
+  /* 3. COMPONENTE --------------------------------------------------- */
+  /* ADR-008 Fase 0 — catálogo em blocos (porta + trilhas + informações).
+     Cada um herda de um semântico/primitivo e é sobrescrito por
+     data-nicho / data-grupo, igual a --acento. Nenhum componente
+     hard-coda cor ou espaçamento (design/README princípio 4). */
+
+  --bloco-espaco: var(--sp-6);   /* respiro vertical entre blocos da #tela-vitrine */
+  --trilha-gap: var(--sp-3);     /* gap entre minis numa .trilha-carrossel */
+  --card-raio: var(--raio);      /* forma do card/mini por nicho ou bloco */
+
+  /* ADR-008 Fase 1 — Bloco 1 (navegador de categorias em dois eixos).
+     Declarados agora para o cascade da Fase 1 não reabrir este arquivo;
+     inertes enquanto o Bloco 1 não existir. */
+  --cat-acento: var(--acento);   /* tint de um grupo de categoria específico */
+  --ref-fade: 200ms;             /* duração do cross-fade do referenciamento (0 em reduced-motion) */
 }

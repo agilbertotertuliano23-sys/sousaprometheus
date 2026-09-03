@@ -40,10 +40,11 @@ Portão B da Fase 1). O **Bloco 1** (navegador de categorias em dois eixos) é
 | E5-03 — blocos `como-usar` / `comparativo` / `bonus` / `faq` | E5 | ⬜ aberto |
 | [E6-01 — seção única (casca) + `TelaEntrada` + `VitrineFoco` + `TrilhaCategorias` + `MiniProduto` + grade por categoria](E6-01-casca-tres-telas.md) | E6 | ✅ feito |
 | [E6-02 — `telas.ts` (navegação, `pushState`/`popstate`, `html.js`, revisita, religar vídeo)](E6-02-maquina-de-telas-no-cliente.md) | E6 | ✅ feito |
-| [E6-03 — `n/[slug].astro` usa a seção única (extrai `SecaoUnica.astro`)](E6-03-rota-por-nicho-secao-unica.md) | E6 | 🔵 detalhada — ∥ E6-04 |
-| [E6-04 — `PortaCatalogo.astro` (porta do catálogo — substitui `TelaEntrada`)](E6-04-porta-do-catalogo.md) | E6 | 🔵 detalhada — **próxima de E6** |
-| [E6-05 — `TrilhaProdutos` (em alta + por categoria) + `BlocoInformacoes`; remove `VitrineFoco`](E6-05-trilhas-e-informacoes.md) | E6 | 🔵 detalhada — depois de E5-02 + E6-04 |
-| [E6-06 — slice de medição em device (= Portão B da Fase 1 do ADR-008)](E6-06-slice-de-medicao-em-device.md) | E6 | 🔵 detalhada — depois de E6-04 + E6-05 |
+| [E5-02 — `GaleriaMidia` + benefícios + specs (`<dl>` + `BlocoSpecs`)](E5-02-galeria-midia-e-specs.md) | E5 | ✅ feito (build verde; QA de device é E6-06) |
+| [E6-03 — `n/[slug].astro` usa a seção única (extrai `SecaoUnica.astro`)](E6-03-rota-por-nicho-secao-unica.md) | E6 | ✅ feito |
+| [E6-04 — `PortaCatalogo.astro` (porta do catálogo — substitui `TelaEntrada`)](E6-04-porta-do-catalogo.md) | E6 | ✅ feito |
+| [E6-05 — `TrilhaProdutos` (em alta + por categoria) + `BlocoInformacoes`; remove `VitrineFoco`](E6-05-trilhas-e-informacoes.md) | E6 | ✅ feito |
+| [E6-06 — slice de medição em device (= Portão B da Fase 1 do ADR-008)](E6-06-slice-de-medicao-em-device.md) | E6 | ⬜ aberto — **próxima de E6** |
 | [E3-01 — reescrever entrada + vitrine + detalhe no cliente (`?n=`)](E3-01-reescrever-slots-e-grade.md) | E3 | ⬜ aberto — **reescopada** (era "cabeçalho + grade") |
 | E3-02 — variante por criativo (`?c=`): categorias, ordem, herói, chamada | E3 | ⬜ aberto |
 | E3-03 — tarja de oferta (`?o=`) + teaser na entrada | E3 | ⬜ aberto |

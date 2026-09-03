@@ -1,21 +1,21 @@
 ---
 /**
- * DetalheProduto — E5-01. Casca estática do detalhe do produto: galeria (versão
- * simples), nome, preço, benefícios, blocos (via RenderBlocos) e CTAs.
+ * DetalheProduto — E5-01 (casca) + E5-02 (galeria rica + specs-resumo).
+ * Galeria (GaleriaMidia: scroll-snap + dots), nome, preço, benefícios (`<ul>`),
+ * specs-resumo (`<dl>`), blocos (via RenderBlocos — inclui o BlocoSpecs
+ * sintético de `blocosDe`) e CTAs.
  *
- * Sem `<script>`, sem dependência nova, funciona 100% sem JS (RNF-04).
- * A galeria rica (GaleriaMidia: scroll-snap + dots + religar vídeo) e o `<dl>` de
- * specs / BlocoSpecs são E5-02 — o bloco `specs` é ignorado com `warn` por
- * RenderBlocos até lá (esperado nesta story).
+ * Sem `<script>` próprio, funciona 100% sem JS (RNF-04). O `<script>` opcional
+ * dos dots é da GaleriaMidia.
  *
  * O elemento raiz NÃO inclui `id="produto-<sku>"` — a âncora por produto é de
  * E6-01 (que envolve cada DetalheProduto num `<article id="produto-<sku>">`).
  */
 import type { Produto } from '../../data/tipos';
 import { galeriaDe, blocosDe } from '../../lib/catalogo/resolver';
-import { urlAsset } from '../../lib/catalogo/carregar';
 import { formatarPreco, percentualDesconto } from '../../lib/utils';
 import RenderBlocos from '../blocos/RenderBlocos.astro';
+import GaleriaMidia from './GaleriaMidia.astro';
 
 interface Props {
   produto: Produto;
@@ -30,30 +30,7 @@ const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentav
 ---
 <article class="detalhe" data-sku={produto.sku}>
   <div class="detalhe-galeria" data-slot="detalhe-galeria">
-    <!-- E5-02: trocar por <GaleriaMidia produto={produto} slug={slug} /> -->
-    {galeria.map((m, i) =>
-      m.tipo === 'video' ? (
-        <video
-          class="detalhe-galeria-media"
-          controls
-          preload="none"
-          playsinline
-          src={urlAsset(slug, m.src)}
-          poster={m.poster ? urlAsset(slug, m.poster) : undefined}
-          aria-label={m.alt}
-          data-capa={i === 0 ? '' : undefined}
-        ></video>
-      ) : (
-        <img
-          class="detalhe-galeria-media"
-          src={urlAsset(slug, m.src)}
-          alt={m.alt}
-          loading="lazy"
-          decoding="async"
-          data-capa={i === 0 ? '' : undefined}
-        />
-      ),
-    )}
+    <GaleriaMidia itens={galeria} slug={slug} sku={produto.sku} />
   </div>
 
   <h2 class="detalhe-nome" data-slot="detalhe-nome">{produto.nome}</h2>
@@ -70,6 +47,17 @@ const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentav
     </ul>
   ) : null}
 
+  {produto.specs?.length ? (
+    <dl class="detalhe-specs-resumo">
+      {produto.specs.map((par) => (
+        <div class="specs-linha">
+          <dt>{par.chave}</dt>
+          <dd>{par.valor}</dd>
+        </div>
+      ))}
+    </dl>
+  ) : null}
+
   <RenderBlocos blocos={blocos} slug={slug} />
 
   <a
@@ -82,15 +70,19 @@ const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentav
 </article>
 <style>
   .detalhe { display: flex; flex-direction: column; gap: var(--sp-4); }
-  .detalhe-galeria { display: flex; flex-direction: column; gap: var(--sp-4); }
-  .detalhe-galeria-media {
-    width: 100%;
-    aspect-ratio: 9 / 16;
-    object-fit: cover;
-    border-radius: var(--raio-sm);
-    background: var(--superficie-alta);
-  }
+  .detalhe-galeria { margin-inline: calc(-1 * var(--sp-4)); }
   .detalhe-nome { font-size: var(--fs-3); }
+  .detalhe-specs-resumo { margin: 0; display: flex; flex-direction: column; }
+  .detalhe-specs-resumo .specs-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--linha);
+  }
+  .detalhe-specs-resumo .specs-linha:last-child { border-bottom: 0; }
+  .detalhe-specs-resumo dt { color: var(--texto-fraco); font-size: var(--fs-00); }
+  .detalhe-specs-resumo dd { margin: 0; font-family: var(--f-mono); font-size: var(--fs-00); text-align: right; }
   .detalhe-preco { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
   .detalhe-preco strong { font-family: var(--f-mono); font-size: var(--fs-2); }
   .detalhe-preco s { color: var(--texto-fraco); font-size: var(--fs-0); }

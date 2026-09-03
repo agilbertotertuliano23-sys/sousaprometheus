@@ -9,6 +9,12 @@ Prioridização MoSCoW. IDs de requisito em [02 — Requisitos](02-requisitos.md
 > [`../architecture/08`](../architecture/08-catalogo-categorizado.md) e
 > [`../architecture/09`](../architecture/09-fluxo-de-telas-e-apresentacao.md).
 
+> **Revisão 2026-09-02 ([ADR-008](../architecture/decisions/adr-008-catalogo-como-pagina-rica-de-secoes.md) Fase 0):**
+> a tela do meio deixa de ser "vitrine em foco (C4)". Só **texto** de **M10**
+> ajustado — nenhum Must novo na Fase 0. Musts novos da Fase 1 (catálogo dinâmico
+> de categorias em dois eixos) entram no cascade pós-portões D-02 + slice de
+> medição (ADR-008 §7).
+
 ## Must
 
 - **M1** — Página única estática, mobile-first, servida de CDN (RF-01, RNF-11).
@@ -34,10 +40,11 @@ Prioridização MoSCoW. IDs de requisito em [02 — Requisitos](02-requisitos.md
   vídeo 9:16), benefícios, specs e um array de **blocos declarativos** tipados,
   cada tipo com um componente Astro dedicado e uma entrada num registry
   extensível (RF-12, RF-13, RF-14).
-- **M10** *(novo)* — Fluxo de 3 telas — entrada (capa editorial) → vitrine
-  (herói em foco + trilha de categorias) → detalhe — como estados de uma seção
-  única no cliente, degradando para conteúdo empilhado navegável por âncora sem
-  JS (RF-15, RF-16, RNF-04).
+- **M10** *(novo; texto ajustado — ADR-008 F0)* — Fluxo de 3 telas — **porta do
+  catálogo** (proposta + organização + mosaico) → **catálogo em blocos** (trilha
+  "em alta" + uma trilha por categoria + grade + informações) → detalhe — como
+  estados de uma seção única no cliente, degradando para conteúdo empilhado
+  navegável por âncora sem JS (RF-15, RF-16, RNF-04).
 
 ## Should
 

@@ -1,6 +1,12 @@
 # PROMETEUS — Estado Atual
 
-**Atualizado:** 2026-09-02 · **Fase:** base + schema ADR-007 (E2-03); apresentação (E5-01) e fluxo de 3 telas (E6-01 casca + E6-02 máquina de telas no cliente) em código. **ADR-008 Fase 0 aceita** — E6 reescopado (porta + trilhas + info; `VitrineFoco` sai). **Stories detalhadas:** [E6-03](stories/E6-03-rota-por-nicho-secao-unica.md), [E6-04](stories/E6-04-porta-do-catalogo.md) (próxima), [E6-05](stories/E6-05-trilhas-e-informacoes.md), [E6-06](stories/E6-06-slice-de-medicao-em-device.md) (slice de medição = Portão B). Bloco 1 (navegador de categorias em dois eixos) é Fase 1, travado por D-02 + E6-06.
+**Atualizado:** 2026-09-02 · **Fase:** base + schema ADR-007 (E2-03); apresentação (E5-01) e fluxo de 3 telas (E6-01 casca + E6-02 máquina de telas no cliente) em código. **ADR-008 Fase 0 — as três telas IMPLEMENTADAS** (branch `feat/adr008-fase0-tres-telas`; `validate`/`typecheck`/`build`/`doctor` exit 0; `dist/index.html` 48 KB cru / **6 KB gzip**; só 2 imagens `eager`).
+- **E6-04 ✔** `PortaCatalogo` (mosaico derivado + linha de organização) substitui `TelaEntrada`.
+- **E6-05 ✔** `TrilhaProdutos` (Bloco 2a "Em alta" + 2b por categoria) + `BlocoInformacoes`; `VitrineFoco` removido; `TrilhaCategorias` `@deprecated`; grade → `id="grade-cat-<id>"`; `telas.ts` rola até `<section id="cat-<id>">` (swap removido).
+- **E6-03 ✔** `SecaoUnica.astro` — fonte única de `/` e `/n/<slug>` (ambas cascas finas).
+- **E5-02 ✔** `GaleriaMidia` (scroll-snap + dots) + `<dl>` specs-resumo + `BlocoSpecs` (REGISTRY 4/8).
+- `tipos.ts`: `entrada.proposta?: string` (opcional). `src/styles/tokens.css` sincronizado (camada COMPONENTE).
+- **Falta:** [E6-06](stories/E6-06-slice-de-medicao-em-device.md) (slice de medição = Portão B da Fase 1) · ratificar D-12/D-13/D-14/D-15 · medição em device · `n/[slug]` OG (E4). Bloco 1 é Fase 1 (D-02 + E6-06).
 **Build:** ✅ verde. `npm install` limpo feito (358 pacotes, lockfile ok);
 `npm run typecheck` (0 erros), `npm run build` (gera `/`, `/404.html`,
 `/n/exemplo/`, `/sitemap.xml`), `npm run doctor` e `npm run validate` — todos verdes.
@@ -55,9 +61,9 @@ que falta e o requisito de origem.
 
 ### Documentação
 
-PRD (00–05), arquitetura (README + 7 temáticos + 6 ADRs), design (README + fundamentos + tokens),
-[épicos E1–E4](epics/README.md), [stories](stories/README.md) (README + E3-01 detalhada).
-Ainda não revisados por `po`.
+PRD (00–05), arquitetura (README + 9 temáticos + **8 ADRs**), design (README + fundamentos + tokens),
+[épicos E1–E6](epics/README.md), [stories](stories/README.md) (E2-03, E5-01/E5-02, E6-01…E6-06, E3-01 detalhadas).
+Revisão `po`: [VALIDACAO-PO.md](VALIDACAO-PO.md) — gate **CONCERNS** (Fase 0 implementável; ressalvas V-1..V-10).
 
 ## O que NÃO existe ainda
 
