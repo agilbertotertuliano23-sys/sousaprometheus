@@ -1,0 +1,60 @@
+/* ==========================================================================
+   PROMETEUS — Design Tokens (FONTE)
+   Editar aqui. src/styles/tokens.css é cópia byte a byte (ver docs/architecture/06).
+   Base herdada do ARES. --acento é trocado em runtime pelo nicho ativo
+   (src/lib/personalizacao/contexto.ts).
+
+   Três camadas: PRIMITIVOS → SEMÂNTICOS → COMPONENTE.
+   ========================================================================== */
+
+:root {
+  /* 1. PRIMITIVOS ------------------------------------------------------- */
+  --c-preto: #0A0B0C;
+  --c-carbono-900: #141618;
+  --c-carbono-800: #1C1F22;
+  --c-carbono-700: #2A2E33;
+  --c-branco-100: #F2F3F5;
+  --c-cinza-400: #8B9096;
+
+  --acento: #1E6FFF;          /* default; sobrescrito por nicho */
+  --acento-texto: #5B93FF;    /* tint AA-safe para texto pequeno sobre escuro */
+
+  --f-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-corpo: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --fs-00: 0.8125rem;
+  --fs-0: 0.9375rem;
+  --fs-1: 1.125rem;
+  --fs-2: 1.5rem;
+  --fs-3: 2rem;
+  --fs-4: 2.5rem;
+
+  --tracking-label: 0.16em;
+  --lh-tight: 1.1;
+  --lh-normal: 1.5;
+
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+
+  --raio: 14px;
+  --raio-sm: 8px;
+
+  /* 2. SEMÂNTICOS ----------------------------------------------------- */
+  --bg: var(--c-preto);
+  --superficie: var(--c-carbono-900);
+  --superficie-alta: var(--c-carbono-800);
+  --linha: var(--c-carbono-700);
+  --texto: var(--c-branco-100);
+  --texto-fraco: var(--c-cinza-400);
+
+  /* alvo de toque mínimo — webview de celular */
+  --toque-min: 44px;
+
+  /* largura máxima de leitura — 1 coluna no celular */
+  --largura-pagina: 480px;
+}

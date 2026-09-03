@@ -1,0 +1,29 @@
+---
+// STUB — Épico E3 / RF-07.1. Tarja/selo global de oferta.
+//
+// Renderiza SEMPRE, começa escondida (`hidden`). Quem a mostra e preenche o
+// texto é src/lib/personalizacao/oferta.ts, no cliente, quando `?o=` casa com
+// uma entrada de `nicho.ofertas` (contrato ainda a definir — ver oferta.ts).
+//
+// Incluir em src/layouts/Base.astro, logo após <body> e antes do <slot />,
+// quando a implementação de E3 estiver pronta.
+---
+<div id="tarja-oferta" class="tarja-oferta" role="status" hidden>
+  <span data-slot="selo-oferta"></span>
+</div>
+
+<style>
+  .tarja-oferta {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: var(--sp-2) var(--sp-4);
+    text-align: center;
+    background: var(--acento);
+    color: #fff;
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+</style>

@@ -1,0 +1,33 @@
+import type { Nicho } from '../tipos';
+
+/**
+ * Nicho: __NOME__
+ *
+ * Gerado por `prometeus niche new __SLUG__`.
+ * Assets ficam em src/assets/catalog/__SLUG__/ (caminhos relativos a essa pasta).
+ * Depois de editar, rode: prometeus catalog validate --niche __SLUG__
+ * E registre "__SLUG__" no índice em src/data/nichos.ts.
+ */
+export const __SLUG__: Nicho = {
+  slug: '__SLUG__',
+  nome: '__NOME__',
+  titulo: 'Título que aparece no topo da página',
+  subtitulo: 'Uma linha de reforço — a promessa do nicho.',
+  acento: '#1E6FFF',
+  cta: 'Ver na loja',
+  produtos: [
+    {
+      sku: '__SLUG__-01',
+      nome: 'Nome do produto',
+      descricaoCurta: 'Uma frase que vende. Curta, concreta, sem enrolação.',
+      precoCentavos: 9990,
+      precoDeCentavos: 14990,
+      imagem: '01/card.webp',
+      video: '01/clipe.mp4',
+      poster: '01/poster.webp',
+      url: 'https://exemplo.com/produto/01',
+      tags: ['novo'],
+      destaque: true,
+    },
+  ],
+};

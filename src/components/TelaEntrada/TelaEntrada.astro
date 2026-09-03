@@ -1,0 +1,90 @@
+---
+/**
+ * TelaEntrada — E6-01 (RF-15.5). Capa editorial com defaults derivados: nada em
+ * `nicho.entrada` é obrigatório.
+ *
+ * A capa do herói é o ÚNICO asset `eager`/`fetchpriority=high` da página (RNF-13).
+ * Sem JS o CTA é uma âncora nativa que rola até `#tela-vitrine`.
+ * `data-slot` são hooks para a reescrita client-side de E3-01.
+ */
+import type { Nicho } from '../../data/tipos';
+import { heroiDaVitrine, galeriaDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco } from '../../lib/utils';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+
+const kicker = nicho.entrada?.kicker ?? `VITRINE · ${nicho.nome}`;
+const heroi =
+  nicho.produtos.find((p) => p.sku === nicho.entrada?.heroiSku) ??
+  heroiDaVitrine(nicho, 'a');
+const capa = galeriaDe(heroi)[0];
+const capaSrc = capa && capa.tipo === 'imagem' ? capa.src : heroi.imagem;
+const capaAlt = capa?.alt ?? heroi.nome;
+const menorPrecoCentavos = Math.min(...nicho.produtos.map((p) => p.precoCentavos));
+const teaser =
+  nicho.entrada?.teaserPreco ?? `a partir de ${formatarPreco(menorPrecoCentavos)}`;
+const chamada = nicho.entrada?.chamada ?? 'Ver a vitrine';
+---
+<div class="entrada">
+  <p class="rotulo" data-slot="kicker">{kicker}</p>
+  <h1 class="entrada-titulo" data-slot="titulo">{nicho.titulo}</h1>
+  <p class="entrada-sub" data-slot="subtitulo">{nicho.subtitulo}</p>
+
+  <div class="entrada-heroi-bleed">
+    <img
+      class="entrada-heroi"
+      data-slot="entrada-heroi"
+      src={urlAsset(nicho.slug, capaSrc)}
+      alt={capaAlt}
+      loading="eager"
+      fetchpriority="high"
+      decoding="async"
+    />
+  </div>
+
+  <p class="entrada-teaser" data-slot="entrada-teaser">{teaser}</p>
+
+  <a
+    class="entrada-cta"
+    href="#tela-vitrine"
+    data-ir="vitrine"
+    data-slot="entrada-cta">{chamada} ›</a>
+
+  <div data-slot="entrada-oferta" hidden></div>
+</div>
+<style>
+  .entrada { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .entrada-titulo { font-size: var(--fs-4); }
+  .entrada-sub { color: var(--texto-fraco); }
+  .entrada-heroi-bleed {
+    margin-inline: calc(-1 * var(--sp-4));
+    margin-block: var(--sp-2);
+  }
+  .entrada-heroi {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: var(--superficie-alta);
+  }
+  .entrada-teaser {
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    color: var(--texto-fraco);
+  }
+  .entrada-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--toque-min);
+    border-radius: var(--raio-sm);
+    background: var(--acento);
+    color: #fff; /* RNF-07: AA sobre #1E6FFF; acento claro exige --acento-texto/texto escuro */
+    font-family: var(--f-display);
+    font-weight: 600;
+  }
+</style>

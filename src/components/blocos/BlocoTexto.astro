@@ -1,0 +1,23 @@
+---
+/**
+ * BlocoTexto — E5-01. Bloco declarativo de texto puro (RF-14.6 / ADR-007 alt. D).
+ * Sem `set:html`: cada parágrafo é uma string renderizada como `<p>`.
+ */
+import type { BlocoTexto } from '../../data/tipos';
+
+interface Props {
+  bloco: BlocoTexto;
+  slug?: string;
+}
+
+const { bloco } = Astro.props;
+---
+<section class="bloco bloco-texto" id={bloco.id}>
+  {bloco.titulo && <h3 class="bloco-titulo">{bloco.titulo}</h3>}
+  {bloco.corpo.map((p) => <p>{p}</p>)}
+</section>
+<style>
+  .bloco { margin-block: var(--sp-6); }
+  .bloco-titulo { font-size: var(--fs-2); margin-bottom: var(--sp-2); }
+  .bloco-texto p { color: var(--texto); margin: var(--sp-2) 0; }
+</style>

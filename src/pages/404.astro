@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+
+// 404 estático. Mobile-first, sem navegação interna (RF-01.1): a única saída é
+// voltar para a raiz, que resolve o nicho pela URL/localStorage.
+---
+<Base titulo="Página não encontrada — PROMETEUS" descricao="Esse link não existe por aqui.">
+  <main class="pagina erro">
+    <p class="rotulo" data-slot="kicker">PROMETEUS</p>
+    <h1>Esse link não existe.</h1>
+    <p class="sub">A vitrine é uma página só. Volte para o começo.</p>
+    <a class="cta" href="/">Ir para a vitrine ›</a>
+  </main>
+</Base>
+
+<style>
+  .erro { text-align: center; }
+  .erro h1 { font-size: var(--fs-3); margin: var(--sp-3) 0 var(--sp-2); }
+  .erro .sub { color: var(--texto-fraco); margin-bottom: var(--sp-6); }
+  .erro .cta {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--toque-min);
+    padding: 0 var(--sp-4);
+    border-radius: var(--raio-sm);
+    background: var(--acento);
+    color: #fff;
+    font-family: var(--f-display);
+    font-weight: 600;
+  }
+</style>

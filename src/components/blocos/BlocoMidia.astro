@@ -1,0 +1,64 @@
+---
+/**
+ * BlocoMidia — E5-01. Pilha vertical de imagens/vídeos 9:16.
+ * Vídeo de bloco é `controls preload="none"` — nunca autoplay (RNF-05 / degradação
+ * doc 09 §2). Sem scroll-snap aqui (isso é GaleriaMidia, E5-02).
+ */
+import type { BlocoMidia } from '../../data/tipos';
+import { urlAsset } from '../../lib/catalogo/carregar';
+
+interface Props {
+  bloco: BlocoMidia;
+  slug: string;
+}
+
+const { bloco, slug } = Astro.props;
+---
+<section class="bloco bloco-midia" id={bloco.id}>
+  {bloco.titulo && <h3 class="bloco-titulo">{bloco.titulo}</h3>}
+  <div class="bloco-midia-itens">
+    {bloco.itens.map((item) =>
+      item.tipo === 'video' ? (
+        <video
+          class="bloco-midia-media"
+          controls
+          preload="none"
+          playsinline
+          src={urlAsset(slug, item.src)}
+          poster={item.poster ? urlAsset(slug, item.poster) : undefined}
+          aria-label={item.alt}
+        ></video>
+      ) : (
+        <img
+          class="bloco-midia-media"
+          src={urlAsset(slug, item.src)}
+          alt={item.alt}
+          loading="lazy"
+          decoding="async"
+        />
+      ),
+    )}
+  </div>
+  {bloco.legenda && <p class="legenda">{bloco.legenda}</p>}
+</section>
+<style>
+  .bloco { margin-block: var(--sp-6); }
+  .bloco-titulo { font-size: var(--fs-2); margin-bottom: var(--sp-2); }
+  .bloco-midia-itens {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+  }
+  .bloco-midia-media {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio-sm);
+    background: var(--superficie-alta);
+  }
+  .legenda {
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+    margin-top: var(--sp-2);
+  }
+</style>

@@ -1,0 +1,68 @@
+---
+/**
+ * MiniProduto — E6-01 (RF-04.1). Miniatura da faixa da vitrine: capa + nome +
+ * preço. Toque leva ao detalhe por âncora (`#produto-<sku>`); `data-ir`/`data-*`
+ * são hooks inertes para E6-02.
+ *
+ * Componente próprio, pequeno, só tokens — NÃO importa CardProduto (CA 13).
+ */
+import type { Produto } from '../../data/tipos';
+import { galeriaDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco } from '../../lib/utils';
+
+interface Props {
+  produto: Produto;
+  slug: string;
+}
+
+const { produto, slug } = Astro.props;
+const capa = galeriaDe(produto)[0];
+// Capa é sempre imagem (nunca vídeo autoplay — RF-04.1).
+const capaSrc = capa && capa.tipo === 'imagem' ? capa.src : produto.imagem;
+const capaAlt = capa?.alt ?? produto.nome;
+---
+<a
+  class="mini"
+  href={`#produto-${produto.sku}`}
+  data-ir="detalhe"
+  data-sku={produto.sku}
+  data-categoria={produto.categoria ?? ''}
+  data-prioridade={String(produto.prioridade ?? 50)}>
+  <img
+    class="mini-capa"
+    src={urlAsset(slug, capaSrc)}
+    alt={capaAlt}
+    loading="lazy"
+    decoding="async"
+  />
+  <span class="mini-nome">{produto.nome}</span>
+  <span class="mini-preco">{formatarPreco(produto.precoCentavos)}</span>
+</a>
+<style>
+  .mini {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    inline-size: 150px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: var(--toque-min);
+  }
+  .mini-capa {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio-sm);
+    background: var(--superficie-alta);
+  }
+  .mini-nome {
+    font-size: var(--fs-00);
+    line-height: var(--lh-tight);
+  }
+  .mini-preco {
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    color: var(--texto-fraco);
+  }
+</style>

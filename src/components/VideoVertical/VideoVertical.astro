@@ -1,0 +1,33 @@
+---
+interface Props {
+  src: string;
+  poster?: string;
+  alt?: string;
+}
+const { src, poster, alt = '' } = Astro.props;
+---
+{
+  src ? (
+    <video
+      data-vertical
+      data-som="off"
+      class="video-vertical"
+      src={src}
+      poster={poster}
+      preload="metadata"
+      muted
+      playsinline
+      loop
+      aria-label={alt}
+    />
+  ) : null
+}
+<style>
+  .video-vertical {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio-sm);
+    background: var(--superficie-alta);
+  }
+</style>

@@ -1,0 +1,35 @@
+---
+/**
+ * RenderBlocos — E5-01. Itera `blocos` na ordem e resolve `tipo → componente`
+ * pelo REGISTRY. Tipo sem componente (registry `null`) → não renderiza nada e,
+ * só sob `import.meta.env.DEV`, emite um `console.warn` (RF-14.5 runtime).
+ *
+ * NÃO importa nenhum `Bloco*.astro` — o acoplamento tipo→componente vive só no
+ * registry (RNF-14).
+ */
+import { REGISTRY } from '../../lib/apresentacao/registry';
+import type { BlocoApresentacao } from '../../data/tipos';
+
+interface Props {
+  blocos: BlocoApresentacao[];
+  slug: string;
+}
+
+const { blocos, slug } = Astro.props;
+---
+{
+  blocos.map((bloco) => {
+    // REGISTRY é Record<TipoBloco, unknown>; E5-01 preenche texto/midia/depoimento.
+    // A garantia de tipo aqui é o `if (!Comp)`.
+    const Comp = REGISTRY[bloco.tipo] as any;
+    if (!Comp) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[RenderBlocos] tipo "${bloco.tipo}" sem componente no REGISTRY — bloco ignorado (E5-02/E5-03 preenchem).`,
+        );
+      }
+      return null;
+    }
+    return <Comp bloco={bloco} slug={slug} />;
+  })
+}

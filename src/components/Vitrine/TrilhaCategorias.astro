@@ -1,0 +1,60 @@
+---
+/**
+ * TrilhaCategorias — E6-01 (RF-10.4). Faixa de chips, um por categoria efetiva.
+ * Sem JS já funciona: cada chip é uma âncora `#cat-<id>` para o heading da grade.
+ * `data-cat`/`data-ir` são hooks inertes para E6-02 ligar filtro/estado.
+ */
+import type { Nicho } from '../../data/tipos';
+import { resolverCategorias } from '../../lib/catalogo/resolver';
+
+interface Props {
+  nicho: Nicho;
+  variante?: 'a' | 'b';
+}
+
+const { nicho, variante = 'a' } = Astro.props;
+const categorias = resolverCategorias(nicho, variante);
+---
+<nav class="trilha" aria-label="Categorias">
+  {categorias.map((cat, i) => (
+    <a
+      class:list={['chip', { ativo: i === 0 }]}
+      href={`#cat-${cat.id}`}
+      data-cat={cat.id}
+      data-ir="vitrine"
+      aria-current={i === 0 ? 'true' : undefined}>
+      {cat.rotulo}
+    </a>
+  ))}
+</nav>
+<style>
+  .trilha {
+    display: flex;
+    gap: var(--sp-2);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-block: var(--sp-2);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: var(--toque-min);
+    padding-inline: var(--sp-4);
+    border: 1px solid var(--linha);
+    border-radius: 999px;
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    color: var(--texto-fraco);
+  }
+  .chip.ativo {
+    border-color: var(--acento);
+    color: var(--texto);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .trilha { scroll-behavior: smooth; }
+  }
+</style>

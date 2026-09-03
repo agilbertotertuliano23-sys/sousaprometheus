@@ -1,0 +1,53 @@
+---
+/**
+ * GradeCatalogo — E6-01. Agrupa por categoria efetiva (doc 08 §4.1/§4.2).
+ * É o fallback sem-JS da vitrine (doc 09 §1): sem JS fica visível; E6-02 a
+ * esconde sob `html.js` quando a `VitrineFoco` assume.
+ *
+ * Cada categoria efetiva ganha um `<h2 id="cat-<id>">` — renderizado MESMO se o
+ * grupo estiver vazio, porque a âncora da trilha precisa resolver.
+ */
+import type { Nicho } from '../../data/tipos';
+import { resolverCategorias, produtosPorCategoria } from '../../lib/catalogo/resolver';
+import CardProduto from '../CardProduto/CardProduto.astro';
+
+interface Props {
+  nicho: Nicho;
+  variante?: 'a' | 'b';
+}
+
+const { nicho, variante = 'a' } = Astro.props;
+const categorias = resolverCategorias(nicho, variante);
+const grupos = produtosPorCategoria(nicho, variante);
+---
+<div class="grade-catalogo">
+  {categorias.map((cat) => (
+    <section class="grade-cat">
+      <h2 id={`cat-${cat.id}`} class="grade-cat-titulo">{cat.rotulo}</h2>
+      {cat.descricao && <p class="grade-cat-desc">{cat.descricao}</p>}
+      <div class="grade">
+        {(grupos.get(cat.id) ?? []).map((p) => (
+          <CardProduto produto={p} slug={nicho.slug} cta={nicho.cta} />
+        ))}
+      </div>
+    </section>
+  ))}
+</div>
+<style>
+  .grade-catalogo { display: flex; flex-direction: column; gap: var(--sp-8); }
+  .grade-cat-titulo { font-size: var(--fs-2); }
+  .grade-cat-desc {
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+    margin: var(--sp-1) 0 0;
+  }
+  .grade {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+    margin-top: var(--sp-4);
+  }
+  @media (min-width: 560px) {
+    .grade { grid-template-columns: 1fr 1fr; }
+  }
+</style>

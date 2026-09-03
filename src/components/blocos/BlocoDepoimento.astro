@@ -1,0 +1,78 @@
+---
+/**
+ * BlocoDepoimento — E5-01. Citação + autor (obrigatório) + contexto/avatar/nota
+ * opcionais. `nota` é clampada a 0..5 inteiro antes de virar estrelas.
+ */
+import type { BlocoDepoimento } from '../../data/tipos';
+import { urlAsset } from '../../lib/catalogo/carregar';
+
+interface Props {
+  bloco: BlocoDepoimento;
+  slug: string;
+}
+
+const { bloco, slug } = Astro.props;
+const temNota = bloco.nota != null;
+const n = Math.max(0, Math.min(5, Math.round(bloco.nota ?? 0)));
+---
+<figure class="bloco bloco-depoimento" id={bloco.id}>
+  <blockquote class="depoimento-citacao">{bloco.citacao}</blockquote>
+  <figcaption class="depoimento-rodape">
+    {bloco.avatar && (
+      <img
+        class="depoimento-avatar"
+        src={urlAsset(slug, bloco.avatar)}
+        alt=""
+        width="40"
+        height="40"
+        loading="lazy"
+        decoding="async"
+      />
+    )}
+    <span class="depoimento-quem">
+      <span class="depoimento-autor">{bloco.autor}</span>
+      {bloco.contexto && <span class="depoimento-contexto">{bloco.contexto}</span>}
+    </span>
+    {temNota && (
+      <span class="depoimento-nota" aria-label={`nota ${n} de 5`}>
+        {'★'.repeat(n)}{'☆'.repeat(5 - n)}
+      </span>
+    )}
+  </figcaption>
+</figure>
+<style>
+  .bloco { margin-block: var(--sp-6); }
+  .bloco-depoimento { margin-inline: 0; }
+  .depoimento-citacao {
+    margin: 0 0 var(--sp-3);
+    font-family: var(--f-display);
+    font-size: var(--fs-1);
+    line-height: var(--lh-tight);
+    color: var(--texto);
+  }
+  .depoimento-rodape {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+  .depoimento-avatar {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 999px;
+    background: var(--superficie-alta);
+  }
+  .depoimento-quem { display: flex; flex-direction: column; }
+  .depoimento-autor { font-weight: 600; }
+  .depoimento-contexto {
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+  }
+  .depoimento-nota {
+    margin-left: auto;
+    color: var(--acento);
+    font-size: var(--fs-00);
+    letter-spacing: 0.1em;
+  }
+</style>

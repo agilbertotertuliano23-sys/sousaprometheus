@@ -1,0 +1,53 @@
+---
+import Base from '../layouts/Base.astro';
+import TelaEntrada from '../components/TelaEntrada/TelaEntrada.astro';
+import TrilhaCategorias from '../components/Vitrine/TrilhaCategorias.astro';
+import VitrineFoco from '../components/Vitrine/VitrineFoco.astro';
+import GradeCatalogo from '../components/GradeCatalogo/GradeCatalogo.astro';
+import DetalheProduto from '../components/Detalhe/DetalheProduto.astro';
+import { NICHO_PADRAO, resolverNicho } from '../data/nichos';
+
+// Seção única com 3 telas (ADR-007 / doc 09 §1). Buildada com o nicho padrão.
+// E6-01 entrega SÓ a casca estática: sem `telas.ts`, sem `html.js`, sem
+// `pushState`, sem esconder telas. Sem JS as 3 telas ficam empilhadas e
+// navegáveis por âncora (RF-16). E6-02 põe o JS por cima.
+const nicho = resolverNicho(NICHO_PADRAO);
+---
+<Base>
+  <main class="pagina">
+    <div id="app" data-tela="entrada">
+      <section id="tela-entrada" class="tela">
+        <TelaEntrada nicho={nicho} />
+      </section>
+
+      <section id="tela-vitrine" class="tela">
+        <TrilhaCategorias nicho={nicho} />
+        <VitrineFoco nicho={nicho} />
+        <GradeCatalogo nicho={nicho} />
+      </section>
+
+      <section id="tela-detalhe" class="tela">
+        {nicho.produtos.map((p) => (
+          <article id={`produto-${p.sku}`} class="detalhe-wrap" data-sku={p.sku}>
+            <DetalheProduto produto={p} slug={nicho.slug} cta={nicho.cta} />
+          </article>
+        ))}
+      </section>
+    </div>
+
+    <footer class="rodape">
+      <p class="rotulo">Catálogo de vitrine · sem checkout próprio</p>
+    </footer>
+  </main>
+</Base>
+
+<style>
+  /* Nenhuma regra oculta `.tela` — isso é E6-02 (sob `html.js`). */
+  .tela { margin-block: var(--sp-8); }
+  .detalhe-wrap { margin-block: var(--sp-8); }
+  .rodape {
+    margin-top: var(--sp-8);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--linha);
+  }
+</style>

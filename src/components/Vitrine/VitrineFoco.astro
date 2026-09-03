@@ -1,0 +1,105 @@
+---
+/**
+ * VitrineFoco — E6-01. Herói grande (capa + nome + preço + CTA de saída) +
+ * faixa de miniaturas na ordem resolvida.
+ *
+ * Raiz `<section hidden>` ESTÁTICO (doc 09 §2): sem JS não aparece — a vitrine
+ * efetiva sem JS é a `GradeCatalogo`. E6-02 revela esta seção.
+ */
+import type { Nicho } from '../../data/tipos';
+import {
+  heroiDaVitrine,
+  produtosPorCategoria,
+  galeriaDe,
+} from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco, percentualDesconto } from '../../lib/utils';
+import MiniProduto from './MiniProduto.astro';
+
+interface Props {
+  nicho: Nicho;
+  variante?: 'a' | 'b';
+}
+
+const { nicho, variante = 'a' } = Astro.props;
+const heroi = heroiDaVitrine(nicho, variante);
+const capa = galeriaDe(heroi)[0];
+const capaSrc = capa && capa.tipo === 'imagem' ? capa.src : heroi.imagem;
+const capaAlt = capa?.alt ?? heroi.nome;
+const desconto = percentualDesconto(heroi.precoCentavos, heroi.precoDeCentavos);
+const produtos = [...produtosPorCategoria(nicho, variante).values()].flat();
+---
+<section class="vitrine-foco" hidden>
+  <div class="vf-heroi">
+    <img
+      class="vf-heroi-capa"
+      data-slot="vitrine-heroi"
+      src={urlAsset(nicho.slug, capaSrc)}
+      alt={capaAlt}
+      loading="lazy"
+      decoding="async"
+    />
+    <h2 class="vf-heroi-nome">{heroi.nome}</h2>
+    <div class="vf-heroi-preco">
+      <strong>{formatarPreco(heroi.precoCentavos)}</strong>
+      {heroi.precoDeCentavos && <s>{formatarPreco(heroi.precoDeCentavos)}</s>}
+      {desconto > 0 && <span class="tarja">-{desconto}%</span>}
+    </div>
+    <a
+      class="vf-heroi-cta"
+      href={heroi.url}
+      target="_blank"
+      rel="noopener nofollow"
+      data-sku={heroi.sku}>{nicho.cta} ›</a>
+  </div>
+
+  <div class="vf-faixa">
+    {produtos.map((p) => <MiniProduto produto={p} slug={nicho.slug} />)}
+  </div>
+</section>
+<style>
+  .vitrine-foco { display: flex; flex-direction: column; gap: var(--sp-6); }
+  .vf-heroi { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .vf-heroi-capa {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio);
+    background: var(--superficie-alta);
+  }
+  .vf-heroi-nome { font-size: var(--fs-2); }
+  .vf-heroi-preco { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+  .vf-heroi-preco strong { font-family: var(--f-mono); font-size: var(--fs-1); }
+  .vf-heroi-preco s { color: var(--texto-fraco); font-size: var(--fs-00); }
+  .vf-heroi-preco .tarja {
+    background: var(--acento);
+    color: #fff; /* RNF-07: AA sobre #1E6FFF; acento claro exige --acento-texto */
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    padding: 2px var(--sp-2);
+    border-radius: 999px;
+  }
+  .vf-heroi-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--toque-min);
+    border-radius: var(--raio-sm);
+    background: var(--acento);
+    color: #fff; /* RNF-07 */
+    font-family: var(--f-display);
+    font-weight: 600;
+  }
+  .vf-faixa {
+    display: flex;
+    gap: var(--sp-3);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-block: var(--sp-2);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vf-faixa { scroll-behavior: smooth; }
+  }
+</style>

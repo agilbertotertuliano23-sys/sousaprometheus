@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>console de preview</title>
+<style>
+  /* ==========================================================================
+     Console de preview — modelo único, compartilhado entre os projetos irmãos
+     (ARES, ZEUS, ATHENA, DIONÍSIO, HERMES, PROMETEUS). O tema (paleta + fontes
+     + rotas dos chips) vem de PERFIS[PROJETO] no <script> — só a linha
+     `var PROJETO = '...'` muda entre um projeto e outro.
+     Shell escuro (chrome de ferramenta). Rótulos mono uppercase, tracking .18em.
+     ========================================================================== */
+  :root {
+    /* defaults (ARES) — sobrescritos por JS a partir do PERFIL */
+    --bg: #0A0B0C; --surface: #141618; --surface-2: #1C1F22; --line: #2A2E33;
+    --text: #F2F3F5; --text-dim: #8B9096; --accent: #1E6FFF; --accent-text: #5B93FF;
+    --f-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --f-body: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+    --fs-000: 0.6875rem; --fs-00: 0.8125rem; --fs-0: 0.9375rem;
+    --tracking-label: 0.18em; --tracking-wide: 0.06em;
+    --sp-1: .25rem; --sp-2: .5rem; --sp-3: .75rem; --sp-4: 1rem; --sp-5: 1.5rem; --sp-6: 2rem;
+    --r-sm: 2px; --r-md: 6px; --r-lg: 12px; --r-full: 999px;
+    --elevation-1: inset 0 1px 0 0 rgba(255,255,255,.04), 0 20px 40px -20px rgba(0,0,0,.6);
+    --elevation-2: inset 0 1px 0 0 rgba(255,255,255,.06), 0 30px 60px -20px rgba(0,0,0,.75), 0 0 80px -10px color-mix(in srgb, var(--accent) 22%, transparent);
+    --texture-grid:
+      repeating-linear-gradient(0deg,  rgba(242,243,245,.035) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(90deg, rgba(242,243,245,.035) 0 1px, transparent 1px 24px);
+    --dur-hover: 250ms; --ease-out: cubic-bezier(.16, 1, .3, 1);
+  }
+  @media (prefers-reduced-motion: reduce) { :root { --dur-hover: 0ms; } }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--f-body);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  header {
+    flex: none; display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-5); align-items: center;
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    box-shadow: var(--elevation-1); position: relative; z-index: 10;
+  }
+  .wordmark {
+    font-family: var(--f-display); font-weight: 600; font-size: var(--fs-00);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text);
+  }
+  .wordmark span { color: var(--text-dim); font-weight: 400; }
+  header label {
+    display: flex; align-items: center; gap: var(--sp-2);
+    font-family: var(--f-mono); font-size: var(--fs-000);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim);
+  }
+  header input {
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: var(--sp-2) var(--sp-3);
+    font-family: var(--f-mono); font-size: var(--fs-00); letter-spacing: 0; text-transform: none;
+  }
+  header input:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+  header input#path { width: 210px; }
+  header input#origin { width: 172px; }
+
+  button {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--accent); border-radius: var(--r-sm);
+    padding: var(--sp-2) var(--sp-4);
+    font-family: var(--f-mono); font-size: var(--fs-00);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; cursor: pointer;
+    transition: background var(--dur-hover) var(--ease-out);
+  }
+  button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  .chips { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .chips button {
+    border-color: var(--line); text-transform: none; letter-spacing: 0;
+    font-size: var(--fs-000); padding: var(--sp-1) var(--sp-2);
+  }
+  .chips button:hover { border-color: var(--accent); background: transparent; }
+
+  #status {
+    margin-left: auto; white-space: nowrap;
+    font-family: var(--f-mono); font-size: var(--fs-000);
+    letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-dim);
+  }
+  #status.err { color: var(--text); }
+  #status.err::before { content: '\26A0  '; color: var(--accent-text); }
+
+  main {
+    flex: 1; display: grid; grid-template-columns: 1fr 1px 1fr;
+    overflow: hidden; position: relative;
+    background-color: var(--bg); background-image: var(--texture-grid);
+  }
+  .divisoria { background: var(--line); }
+
+  .stage {
+    display: flex; flex-direction: column; align-items: center;
+    gap: var(--sp-3); padding: var(--sp-5) var(--sp-5) var(--sp-6);
+    overflow: hidden; min-width: 0;
+  }
+  .cap {
+    flex: none; display: flex; align-items: baseline; gap: var(--sp-3);
+    font-family: var(--f-mono); font-size: var(--fs-000);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim);
+  }
+  .cap b { color: var(--text); font-weight: 500; }
+  .cap i { color: var(--accent-text); font-style: normal; }
+  .cap::before {
+    content: ''; width: 6px; height: 6px; border-radius: var(--r-full);
+    background: var(--accent); align-self: center;
+  }
+
+  .regua {
+    flex: none; display: flex; align-items: center; gap: var(--sp-2);
+    font-family: var(--f-mono); font-size: var(--fs-000);
+    letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-dim);
+  }
+  .regua select {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: var(--sp-1) var(--sp-2);
+    font-family: var(--f-mono); font-size: var(--fs-00); letter-spacing: 0; text-transform: none;
+  }
+  .regua select:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+
+  .wrap { position: relative; flex: none; }
+  .device { position: absolute; top: 0; left: 50%; transform-origin: top center; }
+  .screen { background: #fff; overflow: hidden; }
+  .screen iframe { border: 0; display: block; background: #fff; }
+
+  /* ===== console do COMPUTADOR ===== */
+  .monitor .bezel {
+    background: linear-gradient(var(--surface-2), var(--surface));
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: var(--sp-4) var(--sp-4) var(--sp-5); box-shadow: var(--elevation-2);
+  }
+  .monitor .cam {
+    position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: var(--r-full);
+    background: var(--bg); box-shadow: 0 0 0 1px var(--line);
+  }
+  .monitor .screen { border-radius: var(--r-md); }
+  .monitor .neck {
+    width: 96px; height: 44px; margin: 0 auto;
+    background: linear-gradient(var(--surface-2), var(--surface));
+    border-inline: 1px solid var(--line);
+  }
+  .monitor .base {
+    height: 16px; margin: 0 auto;
+    background: linear-gradient(var(--surface-2), var(--bg));
+    border: 1px solid var(--line); border-top: 0;
+    border-radius: var(--r-md) var(--r-md) var(--r-lg) var(--r-lg) / var(--r-md) var(--r-md) 60px 60px;
+    box-shadow: 0 18px 30px -12px rgba(0,0,0,.55);
+  }
+
+  /* ===== console do SMARTPHONE ===== */
+  .phone {
+    position: absolute; padding: 13px; border-radius: 44px;
+    background: linear-gradient(150deg, var(--line), var(--surface-2) 42%, var(--surface));
+    box-shadow: var(--elevation-2), inset 0 0 0 2px var(--bg);
+  }
+  .phone .screen { border-radius: 30px; }
+  .phone .island {
+    position: absolute; z-index: 3; top: 23px; left: 50%; transform: translateX(-50%);
+    width: 90px; height: 24px; border-radius: var(--r-full);
+    background: var(--bg); box-shadow: 0 0 0 1px var(--line);
+  }
+  .phone .pwr, .phone .vol, .phone .vol2 {
+    position: absolute; width: 3px; border-radius: var(--r-sm); background: var(--line);
+  }
+  .phone .pwr  { right: -3px; top: 128px; height: 60px; }
+  .phone .vol  { left: -3px;  top: 104px; height: 34px; }
+  .phone .vol2 { left: -3px;  top: 146px; height: 34px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="wordmark" id="wordmark">·</span>
+  <label>origem <input id="origin" type="text" spellcheck="false" /></label>
+  <label>rota <input id="path" type="text" spellcheck="false" value="/" /></label>
+  <button id="go">↻ Recarregar</button>
+  <div class="chips" id="chips"></div>
+  <label><input type="checkbox" id="auto" /> auto 2s</label>
+  <span id="status">—</span>
+</header>
+
+<main>
+  <div class="stage" id="stageDsk">
+    <div class="cap"><span>Computador</span> <b id="capDsk">1280×800</b> <i id="kDsk">100%</i></div>
+    <label class="regua">tela
+      <select id="dsk">
+        <option value="1280x800">1280×800</option>
+        <option value="1366x768">1366×768</option>
+        <option value="1440x900">1440×900</option>
+        <option value="1024x768">1024×768</option>
+        <option value="900x820">900×820</option>
+      </select>
+    </label>
+    <div class="wrap" id="wrapDsk">
+      <div class="device monitor" id="devDsk">
+        <div class="bezel"><span class="cam"></span><div class="screen"><iframe id="ifDsk" title="desktop"></iframe></div></div>
+        <div class="neck"></div>
+        <div class="base" id="baseDsk"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divisoria"></div>
+
+  <div class="stage" id="stageFone">
+    <div class="cap"><span>Smartphone</span> <b id="capFone">iPhone 14 · 390×844</b> <i id="kFone">100%</i></div>
+    <label class="regua">tela
+      <select id="fone">
+        <option value="390x844">iPhone 14 · 390×844</option>
+        <option value="393x852">iPhone 15 Pro · 393×852</option>
+        <option value="375x667">iPhone SE · 375×667</option>
+        <option value="360x800">Android · 360×800</option>
+        <option value="412x915">Pixel 7 · 412×915</option>
+      </select>
+    </label>
+    <div class="wrap" id="wrapFone">
+      <div class="device phone" id="devFone">
+        <span class="island"></span><span class="pwr"></span><span class="vol"></span><span class="vol2"></span>
+        <div class="screen"><iframe id="ifFone" title="mobile"></iframe></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  /* >>> trocar SÓ esta linha por projeto:
+         ares | zeus | athena | dionisio | hermes | prometeus  <<< */
+  var PROJETO = 'prometeus';
+
+  var PERFIS = {
+    prometeus: {
+      nome: 'PROMETEUS', port: 4321,
+      chips: ['/', '/#vitrine', '/#produto=exemplo-01', '/n/exemplo/', '/?n=exemplo&c=tt-039&o=frete', '/dev/detalhe'],
+      css: { bg:'#0A0B0C', surface:'#141618', surface2:'#1C1F22', line:'#2A2E33', text:'#F2F3F5', dim:'#8B9096', accent:'#1E6FFF', accentText:'#5B93FF',
+        fDisplay:"'Space Grotesk', ui-sans-serif, system-ui, sans-serif", fBody:"'Archivo', ui-sans-serif, system-ui, sans-serif" }
+    },
+    ares: {
+      nome: 'ARES', port: 4322,
+      chips: ['/', '/vitrine/', '/produto/ares-01-carbon/', '/produto/ares-01-carbon/3d/'],
+      css: { bg:'#0A0B0C', surface:'#141618', surface2:'#1C1F22', line:'#2A2E33', text:'#F2F3F5', dim:'#8B9096', accent:'#1E6FFF', accentText:'#5B93FF',
+        fDisplay:"'Space Grotesk', ui-sans-serif, system-ui, sans-serif", fBody:"'Archivo', ui-sans-serif, system-ui, sans-serif" }
+    },
+    zeus: {
+      nome: 'ZEUS', port: 4323,
+      chips: ['/', '/preview/'],
+      css: { bg:'#0B0B0F', surface:'#131319', surface2:'#1C1C25', line:'#2A2A37', text:'#ECECF2', dim:'#A0A0B0', accent:'#C68A2E', accentText:'#E7C079',
+        fDisplay:"'Encode Sans SC', ui-sans-serif, system-ui, sans-serif", fBody:"'Encode Sans SC', ui-sans-serif, system-ui, sans-serif" }
+    },
+    athena: {
+      nome: 'ATHENA', port: 4324,
+      chips: ['/', '/apresentacao/', '/console/'],
+      css: { bg:'#0F1A16', surface:'#16241F', surface2:'#1C3A2E', line:'#2C4A3D', text:'#E7F0EB', dim:'#94A39D', accent:'#2F6B4F', accentText:'#B4F105',
+        fDisplay:"'Sora', ui-sans-serif, system-ui, sans-serif", fBody:"'Inter', ui-sans-serif, system-ui, sans-serif" }
+    },
+    dionisio: {
+      nome: 'DIONÍSIO', port: 4325,
+      chips: ['/', '/apresentacao/', '/vitrine/', '/web/'],
+      css: { bg:'#0F0F10', surface:'#17171A', surface2:'#1E1E22', line:'#26262B', text:'#F4F1EC', dim:'#9B968F', accent:'#C04B6E', accentText:'#E08AA8',
+        fDisplay:"'Tilt Warp', 'Poppins', ui-sans-serif, system-ui, sans-serif", fBody:"'Inter', ui-sans-serif, system-ui, sans-serif" }
+    },
+    hermes: {
+      nome: 'HERMES', port: 4326,
+      chips: ['/', '/apresentacao/', '/console/'],
+      css: { bg:'#14100E', surface:'#1B1410', surface2:'#251C16', line:'#3A2E24', text:'#F5EDE6', dim:'#9C8A7D', accent:'#E0281C', accentText:'#FF7A70',
+        fDisplay:"'Playfair Display', Georgia, serif", fBody:"'Poppins', ui-sans-serif, system-ui, sans-serif" }
+    }
+  };
+
+  var perfil = PERFIS[PROJETO] || PERFIS.ares;
+  var C = perfil.css, R = document.documentElement;
+  R.style.setProperty('--bg', C.bg); R.style.setProperty('--surface', C.surface);
+  R.style.setProperty('--surface-2', C.surface2); R.style.setProperty('--line', C.line);
+  R.style.setProperty('--text', C.text); R.style.setProperty('--text-dim', C.dim);
+  R.style.setProperty('--accent', C.accent); R.style.setProperty('--accent-text', C.accentText);
+  if (C.fDisplay) R.style.setProperty('--f-display', C.fDisplay);
+  if (C.fBody) R.style.setProperty('--f-body', C.fBody);
+  document.title = perfil.nome.toLowerCase() + ' · console de preview';
+
+  var $ = function (id) { return document.getElementById(id); };
+  $('wordmark').innerHTML = perfil.nome + ' <span>· preview</span>';
+
+  var LS = 'preview-console:' + PROJETO;
+  var cfg = { origin: 'http://localhost:' + (perfil.port || 4321), path: '/', fone: '390x844', dsk: '1280x800', auto: false };
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(LS) || '{}')); } catch (e) {}
+
+  var origin = $('origin'), path = $('path'), fone = $('fone'), dsk = $('dsk'), auto = $('auto');
+  origin.value = cfg.origin; path.value = cfg.path; auto.checked = !!cfg.auto;
+  if ([].some.call(fone.options, function (o) { return o.value === cfg.fone; })) fone.value = cfg.fone;
+  if ([].some.call(dsk.options, function (o) { return o.value === cfg.dsk; })) dsk.value = cfg.dsk;
+
+  // chips do perfil
+  var chipsEl = $('chips');
+  perfil.chips.forEach(function (p) {
+    var b = document.createElement('button');
+    b.textContent = p.length > 22 ? p.slice(0, 21) + '…' : p;
+    b.setAttribute('data-p', p);
+    chipsEl.appendChild(b);
+  });
+
+  var MON = { bezelX: 16, bezelTop: 16, chin: 24, neck: 44, base: 16, baseShadow: 18 };
+  var PH  = { pad: 13 };
+
+  function persist() {
+    cfg = { origin: origin.value, path: path.value, fone: fone.value, dsk: dsk.value, auto: auto.checked };
+    try { localStorage.setItem(LS, JSON.stringify(cfg)); } catch (e) {}
+  }
+  function dims(v) { var p = v.split('x'); return { w: +p[0], h: +p[1] }; }
+
+  function alvo() {
+    var o = origin.value.replace(/\/+$/, '');
+    var p = path.value.trim();
+    if (p && p[0] !== '/' && p[0] !== '?' && p[0] !== '#') p = '/' + p;
+    return o + p;
+  }
+  function urlComBust() {
+    var url = alvo();
+    var hash = '', base = url, h = url.indexOf('#');
+    if (h > -1) { hash = url.slice(h); base = url.slice(0, h); }
+    var bust = (base.indexOf('?') > -1 ? '&' : '?') + '_r=' + Date.now();
+    return base + bust + hash;
+  }
+
+  function moldeMonitor(w, h) {
+    return { w: w + MON.bezelX * 2, h: MON.bezelTop + h + MON.chin + MON.neck + MON.base + MON.baseShadow };
+  }
+  function moldePhone(w, h) { return { w: w + PH.pad * 2, h: h + PH.pad * 2 }; }
+
+  function espacoLivre(stage) {
+    var cs = getComputedStyle(stage);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var gap = parseFloat(cs.rowGap || cs.gap) || 12;
+    var reservado = 0, n = 0;
+    [].forEach.call(stage.children, function (el) {
+      if (el.classList.contains('wrap')) return;
+      reservado += el.getBoundingClientRect().height; n++;
+    });
+    reservado += gap * n;
+    return { w: stage.clientWidth - padX, h: stage.clientHeight - padY - reservado };
+  }
+
+  function layout() {
+    var d = dims(dsk.value), m = dims(fone.value);
+    $('ifDsk').style.width = d.w + 'px';  $('ifDsk').style.height = d.h + 'px';
+    $('ifFone').style.width = m.w + 'px'; $('ifFone').style.height = m.h + 'px';
+    $('baseDsk').style.width = Math.max(200, (d.w + MON.bezelX * 2) * 0.34) + 'px';
+    $('capDsk').textContent = d.w + '×' + d.h;
+    $('capFone').textContent = fone.options[fone.selectedIndex].text;
+
+    var espD = espacoLivre($('stageDsk')), espP = espacoLivre($('stageFone'));
+    var mon = moldeMonitor(d.w, d.h), ph = moldePhone(m.w, m.h);
+    var kD = Math.max(Math.min(espD.w / mon.w, espD.h / mon.h, 1), 0.12);
+    var kP = Math.max(Math.min(espP.w / ph.w,  espP.h / ph.h,  1), 0.12);
+
+    $('devDsk').style.transform = 'translateX(-50%) scale(' + kD + ')';
+    $('devFone').style.transform = 'translateX(-50%) scale(' + kP + ')';
+    $('wrapDsk').style.width = (mon.w * kD) + 'px';  $('wrapDsk').style.height = (mon.h * kD) + 'px';
+    $('wrapFone').style.width = (ph.w * kP) + 'px';  $('wrapFone').style.height = (ph.h * kP) + 'px';
+    $('kDsk').textContent = Math.round(kD * 100) + '%';
+    $('kFone').textContent = Math.round(kP * 100) + '%';
+  }
+
+  function recarregar() {
+    var full = urlComBust();
+    $('ifDsk').src = full; $('ifFone').src = full;
+    var s = $('status'); s.className = '';
+    s.textContent = 'carregado ' + new Date().toLocaleTimeString();
+    persist();
+  }
+  function aplicar() { layout(); recarregar(); }
+
+  $('go').addEventListener('click', recarregar);
+  path.addEventListener('keydown', function (e) { if (e.key === 'Enter') recarregar(); });
+  origin.addEventListener('keydown', function (e) { if (e.key === 'Enter') recarregar(); });
+  fone.addEventListener('change', aplicar);
+  dsk.addEventListener('change', aplicar);
+  auto.addEventListener('change', function () { persist(); tick(); });
+
+  chipsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    path.value = b.getAttribute('data-p'); recarregar();
+  });
+  $('ifDsk').addEventListener('error', function () {
+    var s = $('status'); s.className = 'err';
+    s.textContent = 'sem resposta em ' + origin.value + ' — rode npm run dev ou preview';
+  });
+
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(layout, 120); });
+  var timer = null;
+  function tick() { clearInterval(timer); if (auto.checked) timer = setInterval(recarregar, 2000); }
+
+  layout(); recarregar(); tick();
+})();
+</script>
+</body>
+</html>

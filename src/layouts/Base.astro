@@ -1,0 +1,42 @@
+---
+import '../styles/global.css';
+import { NICHO_PADRAO, resolverNicho } from '../data/nichos';
+import TarjaOferta from '../components/TarjaOferta/TarjaOferta.astro';
+
+interface Props {
+  titulo?: string;
+  descricao?: string;
+}
+
+// Build estático: renderiza sempre com o nicho padrão. A troca por ?n= acontece
+// no cliente (src/lib/personalizacao/contexto.ts). Ver ADR-003.
+const nicho = resolverNicho(NICHO_PADRAO);
+const { titulo = nicho.titulo, descricao = nicho.subtitulo } = Astro.props;
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? '';
+---
+<!doctype html>
+<html lang="pt-BR" data-nicho={NICHO_PADRAO} style={`--acento:${nicho.acento}`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{titulo}</title>
+    <meta name="description" content={descricao} />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:description" content={descricao} />
+    <meta property="og:type" content="website" />
+    {siteUrl && <link rel="canonical" href={siteUrl} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <TarjaOferta />
+    <slot />
+    <script>
+      import { aplicarPersonalizacao } from '../lib/personalizacao/contexto';
+      import { ligarNavegacaoTelas } from '../lib/navegacao/telas';
+      import { ligarVideoVertical } from '../lib/midia/video-vertical';
+      aplicarPersonalizacao();
+      ligarNavegacaoTelas();
+      ligarVideoVertical();
+    </script>
+  </body>
+</html>

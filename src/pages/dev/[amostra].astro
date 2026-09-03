@@ -1,0 +1,33 @@
+---
+/**
+ * Rota SÓ DE DESENVOLVIMENTO — E5-01. Andaime de visualização do DetalheProduto.
+ *
+ * `getStaticPaths()` retorna `[]` fora de `astro dev` → `astro build` NÃO gera
+ * nenhuma página (nada em `dist/dev/**`). Em `astro dev`, `GET /dev/detalhe`
+ * renderiza um `<article id="produto-<sku>">` por produto do nicho `exemplo`.
+ *
+ * Não ligar isto em `index.astro` — a integração real é E6-01.
+ */
+import Base from '../../layouts/Base.astro';
+import DetalheProduto from '../../components/Detalhe/DetalheProduto.astro';
+import { NICHOS } from '../../data/nichos';
+
+export function getStaticPaths() {
+  // Andaime de visualização: em `astro build` (produção) não gera nada.
+  if (!import.meta.env.DEV) return [];
+  return [{ params: { amostra: 'detalhe' } }];
+}
+
+const nicho = NICHOS.exemplo;
+---
+<Base titulo="DEV — DetalheProduto">
+  <main class="pagina">
+    {nicho.produtos.map((p) => (
+      <article
+        id={`produto-${p.sku}`}
+        style="margin-block:2rem;border-top:1px solid var(--linha)">
+        <DetalheProduto produto={p} slug={nicho.slug} cta={nicho.cta} />
+      </article>
+    ))}
+  </main>
+</Base>

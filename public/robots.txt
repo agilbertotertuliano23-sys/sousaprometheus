@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# TODO(E4): trocar pelo domínio real quando publicar.
+# Sitemap: https://exemplo.com/sitemap.xml

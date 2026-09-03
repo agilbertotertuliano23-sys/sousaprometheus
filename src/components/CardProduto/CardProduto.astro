@@ -1,0 +1,86 @@
+---
+import type { Produto } from '../../data/tipos';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco, percentualDesconto } from '../../lib/utils';
+import VideoVertical from '../VideoVertical/VideoVertical.astro';
+
+interface Props {
+  produto: Produto;
+  slug: string;
+  cta: string;
+}
+const { produto, slug, cta } = Astro.props;
+const img = urlAsset(slug, produto.imagem);
+const video = produto.video ? urlAsset(slug, produto.video) : undefined;
+const poster = produto.poster ? urlAsset(slug, produto.poster) : undefined;
+const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentavos);
+---
+<article
+  class:list={['card', { destaque: produto.destaque }]}
+  data-sku={produto.sku}
+  data-categoria={produto.categoria ?? ''}
+  data-prioridade={String(produto.prioridade ?? 50)}>
+  <a class="card-ir" href={`#produto-${produto.sku}`} data-ir="detalhe" data-sku={produto.sku}>
+    <div class="midia">
+      {video ? <VideoVertical src={video} poster={poster} alt={produto.nome} /> : <img src={img} alt={produto.nome} loading="lazy" />}
+      {desconto > 0 && <span class="tarja">-{desconto}%</span>}
+    </div>
+    <h3 class="nome">{produto.nome}</h3>
+  </a>
+  <div class="corpo">
+    <p class="desc">{produto.descricaoCurta}</p>
+    <div class="preco">
+      <strong>{formatarPreco(produto.precoCentavos)}</strong>
+      {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
+    </div>
+    <a class="cta" href={produto.url} target="_blank" rel="noopener nofollow" data-sku={produto.sku}>
+      {cta} ›
+    </a>
+  </div>
+</article>
+<style>
+  .card {
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    overflow: hidden;
+  }
+  .card.destaque { border-color: color-mix(in srgb, var(--acento) 60%, var(--linha)); }
+  .card-ir { display: block; }
+  .midia { position: relative; }
+  .midia img {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    background: var(--superficie-alta);
+  }
+  .tarja {
+    position: absolute;
+    top: var(--sp-2);
+    left: var(--sp-2);
+    background: var(--acento);
+    color: #fff;
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    padding: 2px var(--sp-2);
+    border-radius: 999px;
+  }
+  .nome { font-size: var(--fs-1); padding: var(--sp-3) var(--sp-4) 0; }
+  .corpo { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+  .desc { color: var(--texto-fraco); font-size: var(--fs-00); margin: var(--sp-1) 0 var(--sp-3); }
+  .preco { display: flex; align-items: baseline; gap: var(--sp-2); }
+  .preco strong { font-family: var(--f-mono); font-size: var(--fs-1); }
+  .preco s { color: var(--texto-fraco); font-size: var(--fs-00); }
+  .cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--toque-min);
+    margin-top: var(--sp-3);
+    border-radius: var(--raio-sm);
+    background: var(--acento);
+    color: #fff;
+    font-family: var(--f-display);
+    font-weight: 600;
+  }
+</style>

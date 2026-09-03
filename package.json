@@ -1,0 +1,44 @@
+{
+  "name": "prometeus",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Página de catálogo web de nichos, otimizada para tráfego de TikTok e superpersonalizada por URL.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "bin": {
+    "prometeus": "bin/prometeus.mjs"
+  },
+  "scripts": {
+    "console": "node bin/prometeus.mjs",
+    "dev": "astro dev",
+    "prebuild": "npm run validate",
+    "build": "astro build",
+    "preview": "astro preview",
+    "console:web": "astro build && node -e \"require('fs').copyFileSync('dev/console.html','dist/console.html')\" && astro preview",
+    "typecheck": "astro check",
+    "validate": "node bin/prometeus.mjs catalog validate",
+    "doctor": "node bin/prometeus.mjs doctor",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^6.0.4",
+    "@astrojs/react": "^6.0.4",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "astro": "^7.2.4",
+    "clsx": "^2.1.1",
+    "embla-carousel": "^8.6.0",
+    "preact": "^10.29.8",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/node": "^26.2.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+.astro/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# R-11 — assets brutos NUNCA entram no histórico do git.
+# Ver docs/prd/04-riscos-e-decisoes.md#r-11 e
+# docs/architecture/05-pipeline-de-assets.md
+#
+# Um `git add .` distraído infla o repositório de forma praticamente
+# irreversível (vídeos verticais de vários MB por nicho).
+# ---------------------------------------------------------------------------
+
+# Pasta de curadoria — entrada de trabalho, nunca deployada.
+raw-assets/
+
+# Binários brutos de vídeo em qualquer lugar do repositório — EXCETO as
+# derivadas já comprimidas que o console commita em public/ (ver ADR-006).
+*.mp4
+!public/**/*.mp4
+
+# Memória de agentes (AIOX) — não faz parte da documentação do produto
+**/.claude/agent-memory/

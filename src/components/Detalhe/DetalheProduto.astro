@@ -1,0 +1,133 @@
+---
+/**
+ * DetalheProduto — E5-01. Casca estática do detalhe do produto: galeria (versão
+ * simples), nome, preço, benefícios, blocos (via RenderBlocos) e CTAs.
+ *
+ * Sem `<script>`, sem dependência nova, funciona 100% sem JS (RNF-04).
+ * A galeria rica (GaleriaMidia: scroll-snap + dots + religar vídeo) e o `<dl>` de
+ * specs / BlocoSpecs são E5-02 — o bloco `specs` é ignorado com `warn` por
+ * RenderBlocos até lá (esperado nesta story).
+ *
+ * O elemento raiz NÃO inclui `id="produto-<sku>"` — a âncora por produto é de
+ * E6-01 (que envolve cada DetalheProduto num `<article id="produto-<sku>">`).
+ */
+import type { Produto } from '../../data/tipos';
+import { galeriaDe, blocosDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco, percentualDesconto } from '../../lib/utils';
+import RenderBlocos from '../blocos/RenderBlocos.astro';
+
+interface Props {
+  produto: Produto;
+  slug: string;
+  cta: string;
+}
+
+const { produto, slug, cta } = Astro.props;
+const galeria = galeriaDe(produto);
+const blocos = blocosDe(produto);
+const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentavos);
+---
+<article class="detalhe" data-sku={produto.sku}>
+  <div class="detalhe-galeria" data-slot="detalhe-galeria">
+    <!-- E5-02: trocar por <GaleriaMidia produto={produto} slug={slug} /> -->
+    {galeria.map((m, i) =>
+      m.tipo === 'video' ? (
+        <video
+          class="detalhe-galeria-media"
+          controls
+          preload="none"
+          playsinline
+          src={urlAsset(slug, m.src)}
+          poster={m.poster ? urlAsset(slug, m.poster) : undefined}
+          aria-label={m.alt}
+          data-capa={i === 0 ? '' : undefined}
+        ></video>
+      ) : (
+        <img
+          class="detalhe-galeria-media"
+          src={urlAsset(slug, m.src)}
+          alt={m.alt}
+          loading="lazy"
+          decoding="async"
+          data-capa={i === 0 ? '' : undefined}
+        />
+      ),
+    )}
+  </div>
+
+  <h2 class="detalhe-nome" data-slot="detalhe-nome">{produto.nome}</h2>
+
+  <div class="detalhe-preco">
+    <strong>{formatarPreco(produto.precoCentavos)}</strong>
+    {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
+    {desconto > 0 && <span class="tarja">-{desconto}%</span>}
+  </div>
+
+  {produto.beneficios?.length ? (
+    <ul class="detalhe-beneficios">
+      {produto.beneficios.map((b) => <li>{b}</li>)}
+    </ul>
+  ) : null}
+
+  <RenderBlocos blocos={blocos} slug={slug} />
+
+  <a
+    class="detalhe-cta"
+    href={produto.url}
+    target="_blank"
+    rel="noopener nofollow"
+    data-sku={produto.sku}>{cta} ›</a>
+  <a class="detalhe-voltar" href="#tela-vitrine" data-ir="vitrine">← Voltar à vitrine</a>
+</article>
+<style>
+  .detalhe { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .detalhe-galeria { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .detalhe-galeria-media {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--raio-sm);
+    background: var(--superficie-alta);
+  }
+  .detalhe-nome { font-size: var(--fs-3); }
+  .detalhe-preco { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+  .detalhe-preco strong { font-family: var(--f-mono); font-size: var(--fs-2); }
+  .detalhe-preco s { color: var(--texto-fraco); font-size: var(--fs-0); }
+  .detalhe-preco .tarja {
+    background: var(--acento);
+    color: #fff; /* RNF-07: AA sobre #1E6FFF; acento claro exige --acento-texto/texto escuro */
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    padding: 2px var(--sp-2);
+    border-radius: 999px;
+  }
+  .detalhe-beneficios {
+    margin: 0;
+    padding-left: var(--sp-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .detalhe-cta,
+  .detalhe-voltar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--toque-min);
+    border-radius: var(--raio-sm);
+  }
+  .detalhe-cta {
+    position: sticky;
+    bottom: var(--sp-2);
+    background: var(--acento);
+    color: #fff; /* RNF-07: ver nota da tarja */
+    font-family: var(--f-display);
+    font-weight: 600;
+  }
+  .detalhe-voltar {
+    border: 1px solid var(--linha);
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+  }
+</style>
