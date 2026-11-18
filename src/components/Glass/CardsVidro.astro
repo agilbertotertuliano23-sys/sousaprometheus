@@ -92,7 +92,11 @@ const cartoes = [
   const grupo = document.querySelector<HTMLElement>('.cards-vidro');
   const cards = grupo ? Array.from(grupo.querySelectorAll<HTMLElement>('.vidro')) : [];
 
-  if (grupo && cards.length && !prefereMenosMovimento()) {
+  // Celular (<= 700px): carrossel de rolagem lateral (ver CSS) — sem leque nem
+  // rotação, pra os 3 vídeos aparecerem grandes e inteiros.
+  const celular = matchMedia('(max-width: 700px)').matches;
+
+  if (grupo && cards.length && !celular && !prefereMenosMovimento()) {
     gsap.registerPlugin(ScrollTrigger);
 
     const centro = (cards.length - 1) / 2;
@@ -163,6 +167,31 @@ const cartoes = [
     transform: rotate(calc(var(--r) * 1deg));
     transform-origin: 50% 50%;
     will-change: transform;
+  }
+
+  /* Celular: carrossel horizontal com encaixe (scroll-snap). Cada card ocupa
+     ~66vw (antes encolhiam pra ~100px lado a lado), reto (sem rotação do leque)
+     e com o próximo "espiando" na borda direita pra indicar que dá pra deslizar. */
+  @media (max-width: 700px) {
+    .cards-vidro {
+      justify-content: flex-start;
+      gap: 14px;
+      padding-inline: 5vw;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: 5vw;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .cards-vidro::-webkit-scrollbar { display: none; }
+    .vidro {
+      flex: none;
+      width: 66vw;
+      height: calc(66vw * 1.5);
+      max-height: 78vh;
+      scroll-snap-align: center;
+      transform: none;
+    }
   }
 
   /* O wrapper `astro-island` (client:visible) não herda altura por padrão —

@@ -772,28 +772,24 @@ const copyDescricao =
     :global(html.js) .tt-fundo--on .tt-fundo-card { animation: none; }
   }
 
-  /* mobile: o botão FOLLOW do card passa da borda de baixo e cairia sob o
-     `GradualBlur` (9rem) do fim da seção — respiro extra embaixo. */
-  @media (max-width: 759px) {
-    .siga-tiktok { padding-bottom: 10rem; }
-  }
-
-  /* 2 colunas a partir de tablet — copy à esquerda, card 3D (a
-     "demonstração") à direita, encostado na borda como antes. */
-  @media (min-width: 760px) {
-    .siga-tiktok {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-    }
+  /* 2 colunas em TODAS as larguras (pedido: celular "como é no desktop") —
+     copy à esquerda, card 3D (a "demonstração") à direita, encostado na
+     borda. No celular só encolhe (ver bloco `max-width: 759px` mais abaixo,
+     depois das regras de tipografia e do `.tt-3d`). */
+  .siga-tiktok {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .tt-copy {
     max-width: 480px;
-    text-align: center;
+    text-align: left;
+    flex: 1 1 0;
+    min-width: 0;
   }
   @media (min-width: 760px) {
-    .tt-copy { text-align: left; flex: 1 1 420px; }
+    .tt-copy { flex: 1 1 420px; }
   }
 
   /* Rótulo "Nos siga" — pedido "muito maior" + "siga a tipografia
@@ -926,6 +922,23 @@ const copyDescricao =
     width: 100%;
     height: 100%;
     cursor: pointer;
+  }
+
+  /* ===== Celular: mesma composição do desktop (copy à esquerda, card 3D à
+     direita), só reduzida. Fica DEPOIS das regras base (tipografia e `.tt-3d`)
+     pra ganhar na ordem — mesma especificidade. Sobra `padding-bottom` pro botão
+     FOLLOW (passa da borda de baixo) não cair sob o `GradualBlur` do fim. ===== */
+  @media (max-width: 759px) {
+    .siga-tiktok {
+      gap: 2vw;
+      padding: 28px 3vw 6.5rem;
+    }
+    .tt-scene { flex: none; }
+    .tt-3d { width: 57vw; }
+    p.tt-copy-kicker { font-size: clamp(1rem, 4.6vw, 1.5rem); margin-bottom: 6px; }
+    .tt-copy :global(.tt-copy-titulo) { font-size: clamp(1.2rem, 6.4vw, 2rem); }
+    .tt-copy-sub { font-size: 0.72rem; line-height: 1.3; margin-bottom: 6px; }
+    .tt-copy-desc { font-size: 0.64rem; line-height: 1.4; }
   }
 
   /* brilho rosa (esquerda) / ciano (direita) em volta do card, como na referência */
