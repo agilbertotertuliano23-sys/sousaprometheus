@@ -329,6 +329,96 @@ const copyDescricao =
   // model-viewer mais (removido do attrs acima) — o giro agora é este
   // flourish único, não uma rotação infinita.
   const alvo = document.getElementById('tt-3d');
+  // `any`: o web component <model-viewer> (CDN) não tem tipos aqui.
+  const modelo = document.getElementById('tt-model') as any;
+
+  // ---- Movimento 3D de verdade (pedido: "mais lento, orientado ao 3D, sem
+  // parecer 2D"). Antes o giro era um `rotateY` CSS no contêiner — girava a
+  // "foto" do canvas, sem luz nem espessura mudando. Agora quem gira é a
+  // CÂMERA do model-viewer (theta/phi): o card mostra o volume, as laterais
+  // rosa/azul brilhantes e a luz do estúdio deslizando. Via atributo
+  // (`camera-orbit`), não propriedade — funciona mesmo antes do web component
+  // do CDN ser registrado.
+  const POSE = { theta: 46.6, phi: 94.2 }; // mesma pose de repouso do atributo
+  const LIMITES = { min: '30deg 82deg auto', max: '62deg 104deg auto' };
+  const DURACAO_GIRO = 7000; // ms — uma volta só, lenta
+  const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  const orbita = (theta: number, phi: number) => modelo?.setAttribute('camera-orbit', `${theta.toFixed(2)}deg ${phi.toFixed(2)}deg auto`);
+
+  let visivel3d = true;
+  let arrastando = false;
+  let soltouEm = 0;
+  let girando = false;
+
+  // Balanço leve depois do giro: a câmera oscila alguns graus em torno da pose
+  // (mantém as peças HTML alinhadas) + o contêiner flutua (CSS, `tt-flutua-card`).
+  // Se a pessoa arrasta, pausa; ao soltar espera um pouco e volta suave.
+  function iniciarBalanco() {
+    const t0 = performance.now();
+    let deLa: { theta: number; phi: number } | null = null; // pose em que o usuário largou, pra voltar sem tranco
+    let voltaEm = 0;
+    const passo = (agora: number) => {
+      requestAnimationFrame(passo);
+      if (!visivel3d) return;
+      if (arrastando) { deLa = null; return; }
+      if (soltouEm) {
+        if (agora - soltouEm < 2500) return; // espera um pouco depois de soltar
+        const o = modelo.getCameraOrbit?.(); // radianos
+        deLa = o ? { theta: (o.theta * 180) / Math.PI, phi: (o.phi * 180) / Math.PI } : null;
+        voltaEm = agora;
+        soltouEm = 0;
+      }
+      const t = (agora - t0) / 1000;
+      const rampa = Math.min(1, t / 2.5);
+      let theta = POSE.theta + 4.5 * Math.sin(t * 0.55) * rampa;
+      let phi = POSE.phi + 2.2 * Math.sin(t * 0.4 + 1.2) * rampa;
+      if (deLa) {
+        const w = easeInOut(Math.min(1, (agora - voltaEm) / 1600));
+        theta = deLa.theta + (theta - deLa.theta) * w;
+        phi = deLa.phi + (phi - deLa.phi) * w;
+        if (w >= 1) deLa = null;
+      }
+      orbita(theta, phi);
+    };
+    requestAnimationFrame(passo);
+  }
+
+  function girarCamera() {
+    if (!modelo || girando) return;
+    girando = true;
+    // libera os limites só durante a volta; sem arrastar nesse meio-tempo
+    modelo.removeAttribute('camera-controls');
+    modelo.setAttribute('min-camera-orbit', '-400deg 70deg auto');
+    modelo.setAttribute('max-camera-orbit', '400deg 115deg auto');
+    const inicio = performance.now();
+    const passo = (agora: number) => {
+      const k = Math.min(1, (agora - inicio) / DURACAO_GIRO);
+      const e = easeInOut(k);
+      // 360° terminando na pose de repouso (começa nela também: sem salto);
+      // a câmera se inclina um pouco no meio da volta pra ler como volume.
+      orbita(POSE.theta - 360 * (1 - e), POSE.phi + 7 * Math.sin(Math.PI * e));
+      if (k < 1) { requestAnimationFrame(passo); return; }
+      orbita(POSE.theta, POSE.phi);
+      modelo.setAttribute('min-camera-orbit', LIMITES.min);
+      modelo.setAttribute('max-camera-orbit', LIMITES.max);
+      modelo.setAttribute('camera-controls', '');
+      girando = false;
+      iniciarBalanco();
+    };
+    requestAnimationFrame(passo);
+  }
+
+  if (modelo) {
+    modelo.addEventListener('pointerdown', () => { arrastando = true; });
+    const soltar = () => { if (arrastando) { arrastando = false; soltouEm = performance.now(); } };
+    window.addEventListener('pointerup', soltar);
+    window.addEventListener('pointercancel', soltar);
+  }
+  if (alvo && typeof IntersectionObserver !== 'undefined') {
+    // pausa o balanço (e o trabalho por frame) quando o card sai da tela
+    new IntersectionObserver(([e]) => { visivel3d = e.isIntersecting; }).observe(alvo);
+  }
+
   if (alvo) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       alvo.classList.add('tt-girar-fim');
@@ -338,6 +428,7 @@ const copyDescricao =
           entradas.forEach((entrada) => {
             if (!entrada.isIntersecting) return;
             alvo.classList.add('tt-girar');
+            girarCamera();
             obs.unobserve(entrada.target);
           });
         },
@@ -871,7 +962,15 @@ const copyDescricao =
        antes, que pulava direto de "pequeno parado" pra "grande deslocado"
        só no fim) — o crescimento/deslocamento agora acompanha o giro
        inteiro, curva contínua. */
-    animation: tt-giro-expande 4.8s cubic-bezier(0.45, 0, 0.15, 1) forwards;
+    /* expande/desloca junto com o giro da CÂMERA (script acima, 7 s) e, depois,
+       flutua de leve — `translate` é independente do `transform` da expansão. */
+    animation:
+      tt-giro-expande 7s cubic-bezier(0.45, 0, 0.15, 1) forwards,
+      tt-flutua-card 8s ease-in-out 7s infinite;
+  }
+  @keyframes tt-flutua-card {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -1.4%; }
   }
 
   /* rotateY gira no eixo vertical do card — a borda esquerda/direita varre
@@ -891,11 +990,12 @@ const copyDescricao =
      ease-in-out suave (pico ~300°/s), uma única curva contínua — escala e
      deslocamento crescem junto, sem degrau. Termina em 0° líquido (720°). */
   @keyframes tt-giro-expande {
+    /* sem `rotateY`: o giro 3D agora é da câmera do model-viewer */
     0% {
-      transform: scale(0.8) translateX(0) rotateY(0deg);
+      transform: scale(0.8) translateX(0);
     }
     100% {
-      transform: scale(1.12) translateX(5%) rotateY(720deg);
+      transform: scale(1.12) translateX(5%);
     }
   }
 
@@ -973,7 +1073,7 @@ const copyDescricao =
   }
   /* entram depois do giro (sob `html.js`); sem JS ficam visíveis */
   :global(html.js) .tt-pecas { opacity: 0; }
-  :global(html.js) .tt-3d.tt-girar .tt-pecas { animation: tt-aparece 1s ease 4.2s forwards; }
+  :global(html.js) .tt-3d.tt-girar .tt-pecas { animation: tt-aparece 1.2s ease 6.6s forwards; }
   :global(html.js) .tt-3d.tt-girar-fim .tt-pecas { opacity: 1; }
   @keyframes tt-aparece { to { opacity: 1; } }
 
@@ -1138,7 +1238,7 @@ const copyDescricao =
     filter: drop-shadow(0 0 0.6cqw rgba(251, 3, 68, 0.5));
   }
   .tt-coroa path { stroke-dasharray: 1; stroke-dashoffset: 0; }
-  :global(html.js) .tt-3d.tt-girar .tt-coroa path { animation: tt-traca 1.3s ease 4.8s both; }
+  :global(html.js) .tt-3d.tt-girar .tt-coroa path { animation: tt-traca 1.4s ease 7.4s both; }
   @keyframes tt-traca { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
   @media (prefers-reduced-motion: reduce) {
