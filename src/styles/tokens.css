@@ -7,19 +7,47 @@
    Três camadas: PRIMITIVOS → SEMÂNTICOS → COMPONENTE.
    ========================================================================== */
 
+/* Torna --acento um custom property TIPADO (Houdini) — sem isso, o
+   navegador troca a cor instantaneamente (não interpola entre valores);
+   com `syntax:'<color>'`, `background`/`color` que dependem de --acento
+   animam suave quando o valor muda (ex: ao navegar entre categorias no
+   carrossel da Hero — "ajuste o efeito de passagem"). Sem suporte
+   (Safari < 16.4) degrada pra troca instantânea, sem quebrar nada. */
+@property --acento {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #C83333;
+}
+
 :root {
   /* 1. PRIMITIVOS ------------------------------------------------------- */
-  --c-preto: #0A0B0C;
-  --c-carbono-900: #141618;
-  --c-carbono-800: #1C1F22;
-  --c-carbono-700: #2A2E33;
-  --c-branco-100: #F2F3F5;
-  --c-cinza-400: #8B9096;
+  --c-preto: #000000;
+  --c-grafite-850: #1A1A1A;   /* tom neutro do papel sob o recorte da hero (ref) */
+  /* Skin "sufgang" (ref. sufgang.com.br): neutros puros, sem azul no cinza —
+     os mesmos degraus do tema da loja (24/56/102/208/242). */
+  --c-carbono-900: #181818;
+  --c-carbono-800: #262626;
+  --c-carbono-700: #383838;
+  --c-branco-100: #FFFFFF;
+  --c-cinza-400: #999999;
 
-  --acento: #1E6FFF;          /* default; sobrescrito por nicho */
-  --acento-texto: #5B93FF;    /* tint AA-safe para texto pequeno sobre escuro */
+  --acento: #C83333;          /* default (vermelho da ref.); sobrescrito por nicho */
+  --acento-texto: #E06464;    /* tint AA-safe para texto pequeno sobre escuro */
 
-  --f-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Pedido: "busque uma tipografia perfeita para titulos e textos com
+     excecao da hero e do menus flowings" — pesquisado e trocado de
+     Space Grotesk/Archivo pra Rubik/Manrope (Hero/FlowingMenu usam fontes
+     hardcoded por categoria — `FONTES_POR_SECAO`/`SECAO_FONTES` em
+     Hero.astro/FlowingMenu* — então ficam de fora desta troca).
+     Rubik: arredondada, "friendly" sem ser infantil, boa presença em
+     título/heading. Manrope: legibilidade forte em título E corpo, já
+     carregada no projeto (Gym/Minimal na Hero) — ativa sem fonte nova.
+     JetBrains Mono mantida (só corrigido o bug de carregamento — nunca
+     estava no <link> de fontes do Base.astro, caía sempre no fallback). */
+  /* Skin "sufgang": a ref. usa Halis GR + Acumin (licenças pagas) — Jost
+     (grotesca geométrica) e Archivo (grotesca de corpo) são as livres mais
+     próximas. Títulos em caixa alta com tracking (ver global.css). */
+  --f-display: 'Jost', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --f-corpo: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
@@ -31,6 +59,7 @@
   --fs-4: 2.5rem;
 
   --tracking-label: 0.16em;
+  --tracking-titulo: 0.04em;
   --lh-tight: 1.1;
   --lh-normal: 1.5;
 
@@ -41,8 +70,11 @@
   --sp-6: 1.5rem;
   --sp-8: 2rem;
 
-  --raio: 14px;
-  --raio-sm: 8px;
+  /* Skin "sufgang": cantos retos em tudo; pílula só em chips/campos. */
+  --raio: 0px;
+  --raio-sm: 0px;
+  --raio-botao: 0px;
+  --raio-pill: 40px;
 
   /* 2. SEMÂNTICOS ----------------------------------------------------- */
   --bg: var(--c-preto);
@@ -73,4 +105,31 @@
      inertes enquanto o Bloco 1 não existir. */
   --cat-acento: var(--acento);   /* tint de um grupo de categoria específico */
   --ref-fade: 200ms;             /* duração do cross-fade do referenciamento (0 em reduced-motion) */
+
+  /* Movimento entre seções — escala de tempo + 4 curvas nomeadas, em vez de
+     durações/curvas soltas por componente. */
+  --t-150: 150ms;
+  --t-250: 250ms;
+  --t-350: 350ms;
+  --t-500: 500ms;
+  --t-650: 650ms;
+  --ease-out: cubic-bezier(0.28, 0.44, 0.49, 1);
+  --ease-out-soft: cubic-bezier(0.28, 0, 0.49, 1);
+  --ease-in-out-soft: cubic-bezier(0.72, 0, 0.28, 1);
+  --ease-in-out-hard: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Painel "próxima categoria" (ProximaSecao): altura fixada + pista de rolagem
+     em que a cor do título migra da categoria atual para a próxima. */
+  --proxima-altura: 72svh;
+  --proxima-pista: 48svh;
+}
+
+/* Movimento do site — a configuração lida no código da Basic Agency (case Beats
+   by Dre), a mesma da intro da página. Espelha src/lib/motion/movimento.ts (MOV):
+   troque nos dois lugares. `--mov-ease` = `--ease-in-out-soft`. */
+:root {
+  --mov-ease: cubic-bezier(0.72, 0, 0.28, 1);
+  --mov-tempo: 1s;
+  --mov-atraso: 0.3s;
+  --mov-escalonar: 70ms;
 }

@@ -1,0 +1,151 @@
+---
+/**
+ * IntroEntrada — abertura da página, baseada na gravação de tela da intro do
+ * site da Basic/Dept (case Beats by Dre). Sequência reproduzida do vídeo:
+ *
+ *   1. tela vazia (fundo);
+ *   2. uma frase grande sobe de dentro de uma máscara + legenda pequena;
+ *   3. a frase sai pra cima e o logo (marca) sobe por baixo, se cruzando;
+ *   4. o logo fica um instante e sai pra cima;
+ *   5. a página aparece: menu em fade e o painel da Hero "abre" de baixo pra
+ *      cima (janela que sobe + leve assentamento).
+ *
+ * Como funciona: o `<script is:inline>` de Base.astro põe `html.intro-on` antes
+ * da 1ª pintura (esconde Hero/menu, trava o scroll) — sem JS ou com movimento
+ * reduzido / hash na URL, a classe nem entra e nada disso existe. O módulo
+ * `lib/motion/intro-entrada.ts` espera a fonte, põe `html.intro-go` (dispara
+ * as animações abaixo, todas em CSS com atraso) e limpa tudo no fim.
+ * Fundo do overlay = fundo da página (preto), então quando o logo sai o
+ * overlay some sem "pulo" e a página já está por baixo.
+ *
+ * Tempos: só em `--i-*` abaixo. Se mudar a duração total, ajuste
+ * `DURACAO_MS` em intro-entrada.ts.
+ */
+const FRASE = 'Boas escolhas';
+const LEGENDA = 'Descubra · Escolha · Aproveite';
+const MARCA = 'SOUSAYL';
+---
+<div class="intro" aria-hidden="true">
+  <div class="intro-cena intro-cena--frase">
+    <div class="intro-mascara"><p class="intro-frase">{FRASE}</p></div>
+    <p class="intro-legenda">{LEGENDA}</p>
+  </div>
+  <div class="intro-cena intro-cena--marca">
+    <div class="intro-mascara"><p class="intro-marca">{MARCA}<sup>®</sup></p></div>
+  </div>
+</div>
+
+<style is:global>
+  html {
+    --i-ease: cubic-bezier(0.72, 0, 0.28, 1);
+    --i-frase-in: 0.15s;
+    --i-frase-out: 1.3s;
+    --i-marca-in: 1.2s;
+    --i-marca-out: 2.55s;
+    --i-fim: 3.15s; /* overlay some (fundo = fundo da página, sem pulo) */
+    --i-menu: 3.15s; /* menu aparece quando o logo sai, como no vídeo */
+    --i-hero: 3.4s; /* a Hero sobe logo depois do menu */
+  }
+
+  /* fora da intro o overlay nem existe */
+  .intro { display: none; }
+
+  html.intro-on {
+    overflow: hidden;
+    scrollbar-gutter: stable; /* não deixa o layout "pular" quando a barra volta */
+  }
+  html.intro-on .intro {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg, #000);
+    color: var(--texto, #fff);
+    pointer-events: all;
+  }
+  .intro-cena {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.4vw, 20px);
+  }
+  .intro-mascara {
+    overflow: hidden;
+    padding-block: 0.08em;
+    margin-block: -0.08em;
+  }
+  .intro-frase,
+  .intro-marca {
+    margin: 0;
+    font-family: 'Bigerside', 'Montserrat', system-ui, sans-serif;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1;
+    transform: translateY(110%);
+  }
+  .intro-frase { font-size: clamp(22px, 5.6vw, 108px); letter-spacing: -0.02em; }
+  .intro-marca { font-size: clamp(32px, 9vw, 170px); letter-spacing: -0.02em; }
+  .intro-marca sup {
+    font-family: system-ui, sans-serif;
+    font-size: 0.16em;
+    vertical-align: top;
+    margin-left: 0.15em;
+    color: var(--acento, currentColor);
+  }
+  .intro-legenda {
+    margin: 0;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.6rem, 0.55rem + 0.2vw, 0.78rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0;
+  }
+
+  /* ---------- sequência (só roda com html.intro-go) ---------- */
+  html.intro-go .intro-frase {
+    animation:
+      intro-sobe 0.75s var(--i-ease) var(--i-frase-in) forwards,
+      intro-sai 0.6s var(--i-ease) var(--i-frase-out) forwards;
+  }
+  html.intro-go .intro-legenda {
+    animation:
+      intro-fade 0.6s var(--i-ease) calc(var(--i-frase-in) + 0.3s) forwards,
+      intro-fade-fora 0.3s var(--i-ease) var(--i-frase-out) forwards;
+  }
+  html.intro-go .intro-marca {
+    animation:
+      intro-sobe 0.75s var(--i-ease) var(--i-marca-in) forwards,
+      intro-sai 0.6s var(--i-ease) var(--i-marca-out) forwards;
+  }
+  html.intro-go .intro {
+    animation: intro-some 0.01s linear var(--i-fim) forwards;
+  }
+
+  /* ---------- a página por baixo ---------- */
+  html.intro-on .cab { opacity: 0; }
+  html.intro-on .hero-sg { clip-path: inset(100% -200px -200px -200px); }
+  html.intro-go .cab { animation: intro-fade 0.8s var(--i-ease) var(--i-menu) both; }
+  html.intro-go .hero-sg {
+    transform-origin: 50% 100%;
+    animation: intro-hero-sobe 1.1s var(--i-ease) var(--i-hero) both;
+  }
+
+  @keyframes intro-sobe { from { transform: translateY(110%); } to { transform: translateY(0); } }
+  @keyframes intro-sai { from { transform: translateY(0); } to { transform: translateY(-110%); } }
+  @keyframes intro-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes intro-fade-fora { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes intro-some { to { visibility: hidden; pointer-events: none; } }
+  /* como no vídeo: a Hero é uma "janela" que sobe de baixo pra cima (a borda
+     de cima vai da base até o topo) enquanto o painel assenta (leve zoom-out) */
+  @keyframes intro-hero-sobe {
+    from { clip-path: inset(100% -200px -200px -200px); transform: translateY(6%) scale(1.06); }
+    to { clip-path: inset(-200px); transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro { display: none !important; }
+  }
+</style>

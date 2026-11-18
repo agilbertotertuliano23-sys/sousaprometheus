@@ -1,0 +1,257 @@
+---
+/**
+ * Rodape — rodapé completo (CTA gigante + colunas de links + linha final).
+ *
+ * REFEITO no modelo da referência "Apptronik" (e8ccca…jpg): um BLOCO de cor
+ * sólida em largura total com o CTA enorme em cima ("Ver catálogo →", texto
+ * fino e apertado, seta grande ao lado), e embaixo a marca (wordmark espaçado)
+ * à esquerda + colunas de links em caixa alta miúda à direita, um fio fino e a
+ * linha legal. A cor do bloco é o `--acento` do nicho/categoria ativa (na
+ * referência é laranja; aqui acompanha a cor do site), texto creme.
+ *
+ * Antes (Relume "Footer1"): grade marca/links sobre o fundo preto + linha +
+ * copyright. Continuam valendo estas decisões:
+ *  - NÃO há form de newsletter aqui: o "entrar na lista" já existe em
+ *    `ListaPrioridade.astro` (logo acima) — duplicar criaria 2 capturas de e-mail;
+ *  - só âncoras da própria página (o PROMETEUS não tem rotas de Privacy/Terms).
+ *
+ * Substitui o `<footer class="rodape">` que antes vivia solto em
+ * `index.astro`/`n/[slug].astro` — é parte de `#tela-entrada`, logo após
+ * `ListaPrioridade`.
+ *
+ * Links reais usados:
+ *  - CTA gigante e "Site › Ver catálogo completo": `#vitrine` com
+ *    `data-ir="vitrine"` (convenção de `aoClicar`/`telas.ts` — transição real
+ *    de tela, não só âncora);
+ *  - Coluna "Catálogo": as mesmas 3 sessões de `obterSessoesInicial`
+ *    (Em alta/Kits/Recomendados) → `#secao-<id>`, mesma âncora que
+ *    `TrilhaProdutos` já usa como `id`;
+ *  - Coluna "Site": `#tela-entrada` (voltar ao topo — reconhecido por
+ *    `estadoDeHash`), `#faq`;
+ *  - Coluna "Redes": TikTok (@sousayl) — mesma URL de `SigaTikTok.astro`.
+ */
+import type { Nicho } from '../../data/tipos';
+import type { SessaoVitrineInicial } from '../../lib/catalogo/resolver';
+
+interface Props {
+  nicho: Nicho;
+  sessoesInicial: SessaoVitrineInicial[];
+}
+
+const { nicho, sessoesInicial } = Astro.props;
+const TIKTOK = 'https://www.tiktok.com/@sousayl';
+const ano = new Date().getFullYear();
+
+// Ícone da rede na coluna "Redes" (padrão ícone+label).
+const ICONE_TIKTOK = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.592 2.592 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"></path></svg>`;
+---
+<footer class="rodape-completo">
+  <div class="rodape-in">
+    <a class="rodape-cta" href="#vitrine" data-ir="vitrine">
+      <span class="rodape-cta-texto">Ver catálogo</span>
+      <svg class="rodape-cta-seta" viewBox="0 0 100 80" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+        <path d="M4 40h88M56 6l36 34-36 34" />
+      </svg>
+    </a>
+
+    <div class="rodape-grade">
+      <div class="rodape-marca">
+        <a href="#tela-entrada" class="rodape-logo-link" aria-label={`${nicho.nome} — voltar ao topo`}>
+          <span class="rodape-wordmark">SOUSAYL</span>
+        </a>
+        <p class="rodape-tagline">Catálogo de vitrine — a compra acontece na loja parceira.</p>
+      </div>
+
+      <div class="rodape-links">
+        {sessoesInicial.length > 0 && (
+          <nav class="rodape-col" aria-label="Catálogo">
+            <p class="rodape-col-titulo">Catálogo</p>
+            <ul>
+              {sessoesInicial.map((s) => (
+                <li><a href={`#secao-${s.id}`}>{s.titulo}</a></li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
+        <nav class="rodape-col" aria-label="Site">
+          <p class="rodape-col-titulo">Site</p>
+          <ul>
+            <li><a href="#tela-entrada">Voltar ao topo</a></li>
+            <li><a href="#vitrine" data-ir="vitrine">Ver catálogo completo</a></li>
+            <li><a href="#faq">Perguntas frequentes</a></li>
+          </ul>
+        </nav>
+
+        <nav class="rodape-col" aria-label="Redes">
+          <p class="rodape-col-titulo">Redes</p>
+          <ul>
+            <li>
+              <a href={TIKTOK} target="_blank" rel="noopener noreferrer">
+                <span class="rodape-icone" aria-hidden="true" set:html={ICONE_TIKTOK} />
+                <span>TikTok</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+    <div class="rodape-linha" aria-hidden="true"></div>
+
+    <div class="rodape-base">
+      <p class="rodape-copy">© {ano} {nicho.nome} · Catálogo de vitrine, sem checkout próprio.</p>
+      <a class="rodape-topo" href="#tela-entrada">Voltar ao topo ↑</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  /* Bloco de cor sólida em largura total (a cor é o `--acento` ativo). */
+  .rodape-completo {
+    --rodape-creme: #f6f1e8;
+    --rodape-fio: rgba(15, 15, 15, 0.55);
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    margin-top: clamp(32px, 6vw, 72px);
+    padding: clamp(40px, 7vw, 96px) 0 clamp(20px, 3vw, 32px);
+    background: var(--acento);
+    color: var(--rodape-creme);
+  }
+  .rodape-in {
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: auto;
+    padding-inline: 5vw;
+  }
+
+  /* CTA gigante: texto fino e apertado + seta grande (como "Get Started →") */
+  .rodape-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(16px, 3vw, 48px);
+    padding-bottom: clamp(48px, 9vw, 150px);
+    color: var(--rodape-creme);
+    text-decoration: none;
+  }
+  .rodape-cta-texto {
+    font-family: var(--f-corpo);
+    font-weight: 400;
+    font-size: clamp(3.2rem, 12vw, 12rem);
+    line-height: 0.92;
+    letter-spacing: -0.05em;
+  }
+  .rodape-cta-seta {
+    flex: none;
+    width: clamp(48px, 10vw, 150px);
+    height: auto;
+    transition: transform 0.45s var(--ed-ease, ease);
+  }
+  .rodape-cta:hover .rodape-cta-seta,
+  .rodape-cta:focus-visible .rodape-cta-seta {
+    transform: translateX(clamp(8px, 1.6vw, 24px));
+  }
+  .rodape-cta:focus-visible {
+    outline: 2px solid var(--rodape-creme);
+    outline-offset: 6px;
+  }
+
+  /* marca à esquerda, colunas de links à direita, miúdas em caixa alta */
+  .rodape-grade {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(28px, 5vw, 44px);
+    padding-bottom: clamp(24px, 4vw, 40px);
+  }
+  .rodape-marca {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    max-width: 320px;
+  }
+  .rodape-logo-link { color: inherit; text-decoration: none; }
+  .rodape-wordmark {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(1rem, 1.6vw, 1.35rem);
+    letter-spacing: 0.32em;
+  }
+  .rodape-tagline {
+    margin: 0;
+    font-size: var(--fs-00);
+    opacity: 0.8;
+  }
+
+  .rodape-links {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: clamp(20px, 4vw, 32px);
+  }
+  .rodape-col-titulo {
+    margin: 0 0 var(--sp-3);
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+  .rodape-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rodape-col a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--rodape-creme);
+    font-family: var(--f-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .rodape-col a:hover,
+  .rodape-col a:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
+  .rodape-icone { display: inline-flex; width: 14px; height: 14px; }
+  .rodape-icone :global(svg) { width: 100%; height: 100%; }
+
+  /* fio fino + linha legal (miúda) */
+  .rodape-linha {
+    height: 1px;
+    background: var(--rodape-fio);
+  }
+  .rodape-base {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding-top: clamp(14px, 2.4vw, 22px);
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .rodape-copy { margin: 0; opacity: 0.85; }
+  .rodape-topo { color: var(--rodape-creme); text-decoration: none; }
+  .rodape-topo:hover, .rodape-topo:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
+
+  @media (min-width: 640px) {
+    .rodape-links { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (min-width: 960px) {
+    .rodape-grade { grid-template-columns: 0.75fr 1fr; align-items: end; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rodape-cta-seta { transition: none; }
+  }
+</style>

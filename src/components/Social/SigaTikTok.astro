@@ -1,0 +1,1136 @@
+---
+/**
+ * SigaTikTok — card "Siga a gente no TikTok", ao fim da tela de entrada
+ * (pedido original: "faca um card como 'siga a gente no tiktok' ao fim da
+ * sessao"). Passou por 2 fases:
+ *
+ *  1ª fase: card falso-3D em CSS puro (balão + bico + logo + borda duotone
+ *  rosa/ciano, wobble via `transform: preserve-3d`), refinado até bater com
+ *  a imagem de referência do usuário.
+ *
+ *  2ª fase (esta): pedido explícito "desejo modelo interativo de verdade"
+ *  — o balão virou um MODELO 3D REAL, modelado no Blender (script em
+ *  `scratchpad/blender/tiktok_card_export.py` desta sessão, não versionado
+ *  aqui) e exportado como glTF binário (`public/modelos-3d/tiktok-card.glb`,
+ *  2 cards empilhados — preto maior + branco menor = aro grosso; bordas
+ *  laterais do card preto com material EMISSIVO rosa/ciano; disco da logo
+ *  com a mesma imagem recortada de antes como textura).
+ *
+ * Renderizado no navegador via `<model-viewer>` (Google, web component,
+ * carregado por CDN abaixo — sem dependência nova no projeto): ilumina o
+ * modelo por ambiente (IBL) em tempo real, sem precisar montar luzes de
+ * cena manualmente (era o gargalo no preview renderizado no Blender — a
+ * borda preta e o brilho rosa/ciano nunca batiam certo só com luzes). O
+ * usuário pode arrastar pra girar de verdade (`camera-controls`).
+ *
+ * 3ª fase: pedido "quero colocar ele e animacao, girando e depois ficando
+ * estatico com uma ampliacao em um lado na tela" — `auto-rotate` contínuo
+ * saiu; entrou um giro de ENTRADA único (CSS `rotateY` no container
+ * `.tt-3d`, não no model-viewer — gira o "cartão" achatado inteiro, 3
+ * voltas, força no eixo vertical/horizontal-da-borda), disparado por
+ * IntersectionObserver ao entrar na tela, que termina de frente pra câmera
+ * e junto expande + desloca pro lado direito da seção.
+ *
+ * Texto (handle/seguidores/botão) continua em HTML normal, sobreposto por
+ * cima do canvas 3D — não modelado no Blender (acessível, editável, sem
+ * precisar reexportar o modelo pra trocar uma palavra).
+ *
+ * 4ª fase: pedido com imagem de referência ("leia a forma como os textos
+ * estao enquadrados... veja se tem como replicar dentro do modelo") — a
+ * referência usa o MESMO handle (@sousayl) que já era nosso placeholder,
+ * então virou a definição real do card, não só um estilo genérico.
+ * Ganhou o enquadramento da referência: foto de perfil + nome/handle/bio,
+ * linha de estatísticas (Seguindo/Seguidores/Curtidas com divisores) e o
+ * botão Seguir.
+ *
+ * 5ª fase: pedido "desejo dentro do componente 3d, dentro dele como na
+ * imagem" — o conteúdo saiu do overlay HTML e virou uma TEXTURA aplicada
+ * de verdade num plano dentro do modelo 3D (`TelaTexto`, adicionado ao
+ * `tiktok_card_export.py`, com um material placeholder transparente
+ * `MatTelaTexto` só pra existir o slot de textura no glTF). O script abaixo
+ * desenha o card (avatar/nome/handle/bio/stats/botão) num `<canvas>` e
+ * troca essa textura em tempo real via API do model-viewer
+ * (`material.pbrMetallicRoughness.baseColorTexture.setTexture(...)`) assim
+ * que o modelo carrega — continua editável via código, sem precisar
+ * reabrir o Blender pra trocar uma palavra, mas agora gira JUNTO com o
+ * modelo 3D de verdade.
+ *
+ * O botão "Seguir" não é mais um link separado por cima (não daria pra
+ * acompanhar a posição na tela enquanto o usuário arrasta a câmera pra
+ * girar) — o CARD INTEIRO virou o link: arrastar continua girando
+ * (`camera-controls`), um clique/toque sem arrastar segue o perfil.
+ *
+ * `nome`/`handle`/`bio`/estatísticas/`link` são placeholders — ajuste pro
+ * perfil real.
+ *
+ * A grade Masonry de thumbnails (efeito "de fundo") tentada na 6ª fase foi
+ * removida daqui — pedido seguinte: "faca outra sessao e coloque o efeito
+ * abaixo, tire do fundo do card". Agora vive em `GaleriaTikTok.astro`,
+ * seção própria logo abaixo desta.
+ *
+ * 7ª fase: pedido "entre no blender e faca a materializacao dentro do card
+ * com este formato" + "quero as legendas e a parte de dentro" + "deixar
+ * perfeitamente igual a parte de dentro, em tamanho e proporção", com base
+ * numa imagem de referência (card com badge de coroa DENTRO do avatar,
+ * pontinho depois do nome, coroa depois da bio, linha "Seguir + Mensagem +
+ * 3 ícones" e legenda "APENAS CONTEÚDO!"). Layout inteiro remedido por
+ * pixel na referência (1536x1024): recortei regiões pequenas com grade
+ * sobreposta (crop da imagem inteira distorce a leitura visual — só um
+ * crop menor dá coordenada confiável) e encontrei a caixa de conteúdo real
+ * — do canto do avatar até o fim da legenda — proporção 2.25:1. O plano
+ * `TelaTexto` do `tiktok-card.glb` foi redimensionado DIRETO no Blender
+ * (headless, `bpy`/`bmesh`, largura x altura = 3.8x1.689, mesma proporção
+ * 2.25:1 do canvas) pra caber o conteúdo sem espremer o que já existia,
+ * topo colado embaixo do disco da logo; `.glb` anterior salvo como
+ * `tiktok-card.backup.glb`. Cada coordenada em `desenharTextura()` é a
+ * posição medida na referência convertida pro canvas — nada de estimativa
+ * a olho. Nada de badges 3D soltos fora do card (fora de escopo por
+ * pedido explícito: "quero as legendas e a parte de dentro").
+ *
+ * 8ª fase: pedido "faca a coloracao do card nas bordas e dos elementos
+ * como na referencia tambem" — cores também MEDIDAS (amostragem estatística
+ * de pixels da imagem inteira, mediana das regiões mais saturadas/planas,
+ * não estimativa visual): rosa `#fb0344`, ciano `#04eef6`, preto da
+ * moldura `#101010`, branco do card `#ececec`, preto de texto/ícones
+ * `#0d0d0d`, cinza dos rótulos `#5e5d5f`. Aplicadas nos DOIS lugares —
+ * `MatRosaEmissivo`/`MatCianoEmissivo`/`MatPreto`/`MatBranco` no `.glb`
+ * (Blender, mesmo processo headless das fases anteriores) e nas constantes
+ * `TT_*` do canvas abaixo — pra moldura e conteúdo baterem a mesma
+ * paleta.
+ *
+ * 9ª fase: pedido "retire a nitidez" — `ESCALA` (supersampling da textura,
+ * ligado na 5ª fase) voltou de 3.1 pra 1 (resolução nativa do canvas, sem
+ * boost). Pedido seguinte "termine com as cores, quero que deixe a
+ * coloracao mais forte", esclarecido em seguida como "me refiro a borda do
+ * card" — só a força emissiva da BORDA subiu no `.glb` (3.5/3.325 → 6.0 em
+ * `MatRosaEmissivo`/`MatCianoEmissivo`, mesma cor medida da 8ª fase, só
+ * brilho maior); as constantes `TT_PINK`/`TT_CIANO` do conteúdo interno
+ * (anel do avatar, botão Seguir, ícones) permanecem nos valores medidos,
+ * sem alteração.
+ *
+ * 10ª fase: pedido "quero as bordas do card, e quero tambem que diminua o
+ * efeito de esbranquiçado" — a borda estava estourando pra branco no
+ * tonemap: `exposure="6"` no `<model-viewer>` (herdado de fase antiga,
+ * multiplica a cena INTEIRA) somado à força emissiva 6.0 da 9ª fase
+ * passava do teto de brilho e virava branco em vez de rosa/ciano.
+ * `exposure` caiu pra `1.4` (não é mais um multiplicador absurdo) e a
+ * força emissiva de `MatRosaEmissivo`/`MatCianoEmissivo` no `.glb` voltou
+ * pra um meio-termo, `4.2` (entre o original 3.5/3.325 e o 6.0 estourado).
+ *
+ * 11ª fase: pedido "a cor da borda do card, quero preto com detalhes rosa e
+ * azul" — o material `MatCianoEmissivo` (nome ficou, é só o identificador
+ * no .glb) deixou de ser ciano/turquesa e virou AZUL de verdade: base
+ * `(0.02,0.08,0.35)`, emissão `(0.08,0.35,1.0)`. `MatPreto` (preto
+ * dominante da moldura) e `MatRosaEmissivo` (detalhe rosa) sem alteração.
+ *
+ * 12ª fase: pedido "coloque agora na pagina ele a direita" + "retire a
+ * legenda nos siga de cima" — `<p class="siga-tiktok-kicker">Nos siga</p>`
+ * saiu (junto com a regra CSS `.siga-tiktok-kicker`) e `.siga-tiktok` trocou
+ * `align-items: center` por `flex-end` (card encostado na borda direita da
+ * seção, mesma largura/centralização de container das outras seções).
+ *
+ * 13ª fase: pedido "faca ao lado esquerdo uma copy de peticao para seguir
+ * e demonstracao do banner" (colando o componente `ScrollFloat`, reactbits)
+ * — `.siga-tiktok` virou de fato 2 colunas: `.tt-copy` (título/subtítulo/
+ * descrição pedindo pra seguir) à esquerda, o card 3D (a "demonstração do
+ * banner") à direita, que segue exatamente como antes. Título usa a MESMA
+ * fonte streetwear já definida em `Hero.astro` (`FONTES_POR_SECAO.Streetwear
+ * .titulo`, 'Bigerside') e entra caractere por caractere amarrado ao scroll
+ * via `ScrollFloat` (`src/components/Efeitos/ScrollFloat.tsx`). Copy em
+ * rascunho (pedido: "escreve um rascunho agora") — revisar antes de publicar.
+ *
+ * 14ª fase: pedido "ajuste esta sessao na parte do componente 3d" com a
+ * referência Relume "Header1" (título gigante + descrição + botões, imagem
+ * do lado) colada pelo dono — só a TIPOGRAFIA do título mudou pra bater com
+ * a escala grande/bold do exemplo (`.tt-copy-titulo`, de
+ * `clamp(1.6rem,4vw,3rem)` padrão do `ScrollFloat` pra algo bem maior).
+ * Sem os 2 botões da referência: confirmado explicitamente ("só tipografia,
+ * sem botões") porque o card 3D inteiro já é o único CTA/link desde a 12ª
+ * fase — 2 botões novos duplicariam a ação. `font-weight` continua 400: a
+ * 'Bigerside Expanded' só tem um peso de arquivo (ver `global.css`), então
+ * "bold" aqui vem do tamanho/traço largo da fonte em si, não de negrito
+ * sintético (que distorceria o desenho da letra).
+ *
+ * 15ª fase: pedido "continue o tratamento até conseguir este resultado" (a
+ * mesma referência 1536x1024, agora com botão FOLLOW, coração, sino, cursor,
+ * coroa). Achado ao renderizar em navegador headless: a placa BRANCA do
+ * `.glb` ficava ESCONDIDA atrás da preta (mais grossa, na frente em z), então
+ * o card aparecia preto/cinza e o texto escuro sumia. Correções, todas
+ * reproduzíveis por `scripts/tiktok-card/` (reconstrói o `.glb` a partir de
+ * `tiktok-card.orig.glb`, que é o arquivo de antes, intocado):
+ *  - placa branca pra frente, centralizada, aro preto UNIFORME; preta mais
+ *    grossa (profundidade) e brilhante; laterais rosa/ciano saturadas;
+ *  - ponta do balão ACHATADA (na referência a ponta é do botão FOLLOW);
+ *  - proporção do card 1.78:1 (a da moldura na referência) e plano do texto
+ *    ampliado/reposicionado; disco do TikTok à frente do aro;
+ *  - iluminação: `estudio.jpg` (ambiente claro gerado por `gen_env.py`) no
+ *    lugar do "legacy", que deixava o branco cinza.
+ * As peças flutuantes são HTML/SVG por cima (ver `.tt-pecas`), num plano
+ * (`.tt-cardbox`) girado em Y pra acompanhar o ângulo do modelo. Pose final =
+ * a de antes (camera-orbit 46.6°/94.2°); arrastar só varia ±16° em torno dela
+ * pra as peças continuarem alinhadas. Giro de entrada suavizado (2 voltas em
+ * 4,8 s, ease-in-out; antes 3 voltas em 2,4 s) e as peças entram depois dele.
+ * Se mudar o ângulo/proporção do card, reajuste `.tt-cardbox` (left/top/width/
+ * rotateY) comparando com uma captura.
+ */
+import ScrollFloat from '../Efeitos/ScrollFloat';
+import GradualBlur from '../Efeitos/GradualBlur';
+import thumb01 from '../../assets/masonry/thumb-01.png?url';
+import thumb02 from '../../assets/masonry/thumb-02.png?url';
+import thumb03 from '../../assets/masonry/thumb-03.png?url';
+import thumb04 from '../../assets/masonry/thumb-04.png?url';
+import thumb05 from '../../assets/masonry/thumb-05.png?url';
+import thumb06 from '../../assets/masonry/thumb-06.png?url';
+import thumb07 from '../../assets/masonry/thumb-07.png?url';
+import thumb08 from '../../assets/masonry/thumb-08.png?url';
+import thumb09 from '../../assets/masonry/thumb-09.png?url';
+import thumb10 from '../../assets/masonry/thumb-10.png?url';
+import thumb11 from '../../assets/masonry/thumb-11.png?url';
+import thumb12 from '../../assets/masonry/thumb-12.png?url';
+import thumb13 from '../../assets/masonry/thumb-13.png?url';
+import thumb14 from '../../assets/masonry/thumb-14.png?url';
+import thumb15 from '../../assets/masonry/thumb-15.png?url';
+import thumb16 from '../../assets/masonry/thumb-16.png?url';
+import thumb17 from '../../assets/masonry/thumb-17.png?url';
+import thumb18 from '../../assets/masonry/thumb-18.png?url';
+
+// Imagens da parede de fundo (18 = 3 linhas × 6 colunas no desktop; no celular a
+// seção é mais alta e mostra mais linhas com as mesmas imagens).
+const fundoThumbs = [
+  thumb01, thumb02, thumb03, thumb04, thumb05, thumb06,
+  thumb07, thumb08, thumb09, thumb10, thumb11, thumb12,
+  thumb13, thumb14, thumb15, thumb16, thumb17, thumb18,
+];
+
+const nome = 'sousa';
+const handle = '@sousayl';
+const bio = 'Conteúdo que te conecta.';
+const seguindo = '57';
+const seguidores = '26,4 mil';
+const curtidas = '11,5 milhões';
+const link = 'https://www.tiktok.com/@sousayl';
+
+// Copy da coluna esquerda — rascunho (pedido: "escreve um rascunho agora").
+const copyTitulo = 'SEGUE PRA NÃO PERDER NADA';
+const copySubtitulo = 'Drop novo, bastidor e desconto — a gente avisa primeiro no TikTok.';
+const copyDescricao =
+  'A gente posta antes de qualquer lugar: peça nova chegando, reposição de estoque e cupom relâmpago só pra quem segue. Sem spam, só o que importa direto no seu feed.';
+---
+<script type="module" is:inline src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+<section class="siga-tiktok">
+  {/* Fundo: parede de cards (formato dos antigos cards da Galeria) com as
+      IMAGENS dentro e uma linha a mais (3) — pedido: "aumente mais uma linha
+      atras da sessao e coloque as imagens atras". Escurecida (ver CSS) pra o
+      texto e o card 3D ficarem legíveis. Decorativa; entra escalonada ao rolar. */}
+  <div class="tt-fundo" aria-hidden="true">
+    {fundoThumbs.map((src, i) => (
+      <span class="tt-fundo-card" style={`--i:${i}`}>
+        <img src={src} alt="" loading="lazy" decoding="async" />
+      </span>
+    ))}
+  </div>
+
+  <div class="tt-copy">
+    <p class="tt-copy-kicker">Nos siga</p>
+    <ScrollFloat client:visible containerClassName="tt-copy-titulo-wrap" textClassName="tt-copy-titulo">
+      {copyTitulo}
+    </ScrollFloat>
+    <p class="tt-copy-sub">{copySubtitulo}</p>
+    <p class="tt-copy-desc">{copyDescricao}</p>
+  </div>
+
+  <div class="tt-scene">
+    <div class="tt-3d" id="tt-3d">
+      <a
+        class="tt-card-link"
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Seguir ${handle} no TikTok — ${nome}, ${seguidores} seguidores`}
+      >
+        <model-viewer
+          id="tt-model"
+          class="tt-model"
+          src="/modelos-3d/tiktok-card.glb"
+          alt={`Card 3D — siga @${handle.replace('@', '')} no TikTok`}
+          loading="eager"
+          reveal="auto"
+          camera-controls
+          interaction-policy="always-allow"
+          disable-zoom
+          interaction-prompt="none"
+          interpolation-decay="200"
+          shadow-intensity="0.6"
+          exposure="1.1"
+          environment-image="/modelos-3d/estudio.jpg"
+          camera-orbit="46.6deg 94.2deg auto"
+          min-camera-orbit="30deg 82deg auto"
+          max-camera-orbit="62deg 104deg auto"
+        ></model-viewer>
+      </a>
+
+      {/* Peças flutuantes em volta do card (14ª+ fase: "continue o tratamento até
+          conseguir este resultado" — referência com botão FOLLOW, coração, sino,
+          cursor e coroa). Camadas HTML/SVG por cima do modelo 3D, posicionadas em
+          % da CAIXA DO CARD (`.tt-cardbox`, medida na captura) e dimensionadas em
+          `cqw` (container query = largura do card), então escalam juntas. Decorativas:
+          `aria-hidden` + `pointer-events:none` — clique/arraste passam pro card 3D.
+          Nota do TikTok = Font Awesome Free 6 "tiktok" (CC BY 4.0,
+          https://fontawesome.com/license/free), 3 camadas (ciano/rosa/branco). */}
+      <div class="tt-pecas" aria-hidden="true">
+        <div class="tt-cardbox">
+          <svg class="tt-peca tt-coroa" viewBox="0 0 80 66" style="--d:-1s">
+            <path pathLength="1" d="M8 56 C24 62 54 62 72 55" />
+            <path pathLength="1" d="M11 52 L7 20 L27 38 L40 8 L53 38 L73 20 L69 52" />
+          </svg>
+
+          <div class="tt-peca tt-coracao" style="--d:-2s">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+          </div>
+
+          <div class="tt-peca tt-sino" style="--d:-3s">
+            <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
+            <i class="tt-fagulha tt-fagulha--1"></i><i class="tt-fagulha tt-fagulha--2"></i><i class="tt-fagulha tt-fagulha--3"></i>
+          </div>
+
+          <svg class="tt-peca tt-cursor" viewBox="0 0 30 34" style="--d:-1.5s">
+            <path class="tt-cursor-sombra" d="M5 4 L5 26 L11 20.5 L15.5 30 L20 28 L15.6 18.4 L24 18 Z" />
+            <path class="tt-cursor-corpo" d="M4 3 L4 25 L10 19.5 L14.5 29 L19 27 L14.6 17.4 L23 17 Z" />
+          </svg>
+
+          <div class="tt-peca tt-follow" style="--d:-0.5s">
+            <svg class="tt-nota" viewBox="0 0 448 512">
+              <path class="tt-nota-ciano" d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z" />
+              <path class="tt-nota-rosa" d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z" />
+              <path class="tt-nota-branca" d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z" />
+            </svg>
+            <span class="tt-follow-texto">FOLLOW</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <GradualBlur
+    client:visible
+    position="bottom"
+    height="9rem"
+    strength={2.5}
+    divCount={6}
+    curve="bezier"
+    opacity={0.9}
+  />
+</section>
+
+<script>
+  // Giro de entrada — uma vez só, ao entrar na tela (pedido: "quero que ele
+  // de um giro ... e parand e expandindo"). Sem `auto-rotate` contínuo do
+  // model-viewer mais (removido do attrs acima) — o giro agora é este
+  // flourish único, não uma rotação infinita.
+  const alvo = document.getElementById('tt-3d');
+  if (alvo) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      alvo.classList.add('tt-girar-fim');
+    } else if (typeof IntersectionObserver !== 'undefined') {
+      const observador = new IntersectionObserver(
+        (entradas, obs) => {
+          entradas.forEach((entrada) => {
+            if (!entrada.isIntersecting) return;
+            alvo.classList.add('tt-girar');
+            obs.unobserve(entrada.target);
+          });
+        },
+        { threshold: 0.35 },
+      );
+      observador.observe(alvo);
+    } else {
+      alvo.classList.add('tt-girar-fim');
+    }
+  }
+
+  // Parede de cards vazios do fundo: entra escalonada quando a seção aparece.
+  const fundo = document.querySelector('.tt-fundo');
+  if (fundo) {
+    if (typeof IntersectionObserver === 'undefined') {
+      fundo.classList.add('tt-fundo--on');
+    } else {
+      const obsFundo = new IntersectionObserver(
+        (entradas, obs) => {
+          entradas.forEach((e) => {
+            if (!e.isIntersecting) return;
+            fundo.classList.add('tt-fundo--on');
+            obs.unobserve(e.target);
+          });
+        },
+        { threshold: 0.15 },
+      );
+      obsFundo.observe(fundo);
+    }
+  }
+</script>
+
+<script is:inline define:vars={{ nome, handle, bio, seguindo, seguidores, curtidas }}>
+  // Textura dinâmica do card — desenha o perfil (avatar/nome/handle/bio/
+  // stats/botão) num <canvas> e aplica no material `MatTelaTexto` (plano
+  // `TelaTexto` dentro do .glb, ver tiktok_card_export.py) via API de
+  // materiais do model-viewer, assim que o modelo carrega. Substitui o
+  // antigo overlay HTML — pedido: "desejo dentro do componente 3d, dentro
+  // dele como na imagem".
+  // Cores MEDIDAS por pixel na imagem de referência (amostragem estatística
+  // da imagem inteira) — pedido: "faca a coloracao do card nas bordas e dos
+  // elementos como na referencia tambem". "Deixe a coloracao mais forte"
+  // (pedido seguinte) era sobre a BORDA do card ("me refiro a borda do
+  // card") — o brilho emissivo subiu no `.glb`, essas constantes do
+  // conteúdo interno ficam nos valores medidos.
+  const TT_TINTA = '#0d0d0d'; // preto do disco do avatar/ícones, medido ~(7,7,7)
+  const TT_CINZA = '#5e5d5f'; // cinza dos rótulos de stats, medido ~(94,93,95)
+  const TT_PINK = '#fb0344'; // rosa da borda/botão Seguir, medido ~(251,3,68)
+  const TT_CIANO = '#04eef6'; // ciano da borda/anel do avatar, medido ~(4,238,246)
+
+  // Resolução — pedido "retire a nitidez": volta pra escala nativa (sem
+  // supersampling). `s()` continua existindo só pra não precisar reescrever
+  // todas as coordenadas abaixo — com ESCALA=1 ele não faz nada.
+  const ESCALA = 1;
+  const s = (v) => v * ESCALA;
+
+  // Coroa simples (3 picos + bolinhas) — pedido: "quero as legendas e a
+  // parte de dentro" com base na imagem de referência (badge no avatar +
+  // acento depois da bio).
+  function desenharCoroa(ctx, cx, cy, tam, cor) {
+    const w = tam;
+    const h = tam * 0.62;
+    ctx.fillStyle = cor;
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, cy + h / 2);
+    ctx.lineTo(cx - w / 2, cy - h / 6);
+    ctx.lineTo(cx - w / 3.2, cy + h / 8);
+    ctx.lineTo(cx - w / 6, cy - h / 2);
+    ctx.lineTo(cx, cy + h / 10);
+    ctx.lineTo(cx + w / 6, cy - h / 2);
+    ctx.lineTo(cx + w / 3.2, cy + h / 8);
+    ctx.lineTo(cx + w / 2, cy - h / 6);
+    ctx.lineTo(cx + w / 2, cy + h / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Raio simples — legenda "APENAS CONTEÚDO!".
+  function desenharRaio(ctx, cx, cy, tam, cor) {
+    ctx.fillStyle = cor;
+    ctx.beginPath();
+    ctx.moveTo(cx + tam * 0.12, cy - tam * 0.5);
+    ctx.lineTo(cx - tam * 0.28, cy + tam * 0.08);
+    ctx.lineTo(cx - tam * 0.02, cy + tam * 0.08);
+    ctx.lineTo(cx - tam * 0.12, cy + tam * 0.5);
+    ctx.lineTo(cx + tam * 0.28, cy - tam * 0.1);
+    ctx.lineTo(cx + tam * 0.02, cy - tam * 0.1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Botão em pílula (fundo sólido OU só contorno) — reaproveitado pelo
+  // "Seguir" (sólido rosa) e "Mensagem" (contorno) da linha de botões.
+  function desenharPilula(ctx, bx, by, bw, bh, { fill, stroke, strokeWidth }) {
+    const br = bh / 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + br, by);
+    ctx.arcTo(bx + bw, by, bx + bw, by + bh, br);
+    ctx.arcTo(bx + bw, by + bh, bx, by + bh, br);
+    ctx.arcTo(bx, by + bh, bx, by, br);
+    ctx.arcTo(bx, by, bx + bw, by, br);
+    ctx.closePath();
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = strokeWidth || s(4);
+      ctx.stroke();
+    }
+  }
+
+  function desenharTextura() {
+    // Layout MEDIDO por pixel na imagem de referência (não estimado a
+    // olho) — pedido: "deixar perfeitamente igual a parte de dentro, em
+    // tamanho e proporção". Processo: recortei regiões da referência
+    // (1536x1024) em crops pequenos com grade sobreposta (crop grande demais
+    // distorce a leitura visual — aprendido nesta sessão) e li as
+    // coordenadas reais de cada elemento. Caixa de conteúdo medida: de
+    // (300,215) — borda do avatar — até (1245,635) — fim da legenda.
+    // Proporção 945:420 = 2.25:1, aplicada IGUAL tanto aqui quanto no plano
+    // `TelaTexto` do .glb (redimensionado no Blender pra 3.8x1.689). Cada
+    // coordenada abaixo é `(medida_na_referencia - origem) * 1.376`
+    // (escala uniforme nos dois eixos — formas continuam circulares).
+    const W = s(1300);
+    const H = s(578);
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+
+    // avatar — medido: centro (165,165), raio externo (anel ciano) 165.
+    const cx = s(165);
+    const cy = s(165);
+    const r = s(140);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + s(25), 0, Math.PI * 2);
+    ctx.strokeStyle = TT_CIANO;
+    ctx.lineWidth = s(14);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + s(10), 0, Math.PI * 2);
+    ctx.strokeStyle = TT_PINK;
+    ctx.lineWidth = s(14);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = TT_TINTA;
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `900 ${s(129)}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((nome[0] || 'S').toUpperCase(), cx, cy + s(23));
+
+    // coroa branca DENTRO do avatar, acima da letra — na referência não é
+    // um badge separado, é só a coroa desenhada direto no disco preto.
+    desenharCoroa(ctx, cx + s(3), cy - s(62), s(89), '#ffffff');
+
+    // nome / handle / bio — medido: textX=365 (mesma coluna esquerda pro
+    // nome, handle e bio).
+    const textX = s(365);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = TT_TINTA;
+    ctx.font = `800 ${s(80)}px Arial, sans-serif`;
+    ctx.fillText(nome, textX, s(117));
+    // pontinho depois do nome — medido: centro ~(702,103).
+    ctx.beginPath();
+    ctx.arc(s(702), s(103), s(23), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = TT_CINZA;
+    ctx.font = `400 ${s(46)}px Arial, sans-serif`;
+    ctx.fillText(handle, textX, s(158));
+
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = TT_TINTA;
+    ctx.font = `400 ${s(42)}px Arial, sans-serif`;
+    ctx.fillText(bio, textX, s(224));
+    ctx.globalAlpha = 1;
+    // coroa pequena depois da bio — medido: centro ~(805,211).
+    desenharCoroa(ctx, s(805), s(211), s(48), TT_PINK);
+
+    // stats — medido: baseline do número 307, do rótulo 351; colunas em
+    // 406 / 710 / 1005, divisórias em 629 / 963.
+    const statsNumY = s(307);
+    const statsLblY = s(351);
+    const stats = [
+      [seguindo, 'Seguindo', s(406)],
+      [seguidores, 'Seguidores', s(710)],
+      [curtidas, 'Curtidas', s(1005)],
+    ];
+    const divisorias = [s(629), s(963)];
+    stats.forEach(([num, label, colX]) => {
+      ctx.fillStyle = TT_TINTA;
+      // encolhe a fonte só o necessário pra o número caber até a borda da
+      // textura (ex.: "11,5 milhões" estourava e saía cortado na 3ª coluna)
+      let tamNum = s(54);
+      ctx.font = `800 ${tamNum}px Arial, sans-serif`;
+      const larguraNum = ctx.measureText(num).width;
+      const disponivel = W - s(40) - colX;
+      if (larguraNum > disponivel) {
+        tamNum = Math.floor((tamNum * disponivel) / larguraNum);
+        ctx.font = `800 ${tamNum}px Arial, sans-serif`;
+      }
+      ctx.fillText(num, colX, statsNumY);
+      ctx.fillStyle = TT_CINZA;
+      ctx.font = `400 ${s(34)}px Arial, sans-serif`;
+      ctx.fillText(label, colX, statsLblY);
+    });
+    divisorias.forEach((divX) => {
+      ctx.strokeStyle = 'rgba(22,24,35,0.18)';
+      ctx.lineWidth = s(4);
+      ctx.beginPath();
+      ctx.moveTo(divX, statsNumY - s(38));
+      ctx.lineTo(divX, statsLblY + s(6));
+      ctx.stroke();
+    });
+
+    // linha de botões — medido: topo 388, altura 107. "Seguir" 135→403,
+    // "Mensagem" 424→830, ícones centrados em 922/1039/1156, raio 48.
+    const by = s(388);
+    const bh = s(107);
+
+    const seguirBx = s(135);
+    const seguirBw = s(268);
+    desenharPilula(ctx, seguirBx, by, seguirBw, bh, { fill: TT_PINK });
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `800 ${s(46)}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SEGUIR', seguirBx + seguirBw / 2, by + bh / 2 + s(2));
+
+    const mensagemBx = s(424);
+    const mensagemBw = s(406);
+    desenharPilula(ctx, mensagemBx, by, mensagemBw, bh, {
+      stroke: 'rgba(22,24,35,0.28)',
+      strokeWidth: s(4),
+    });
+    ctx.fillStyle = TT_TINTA;
+    ctx.font = `700 ${s(40)}px Arial, sans-serif`;
+    ctx.fillText('Mensagem', mensagemBx + mensagemBw / 2, by + bh / 2 + s(2));
+
+    // 3 botões redondos: adicionar pessoa / compartilhar / mais.
+    const iconeR = s(48);
+    const iconeCy = s(442);
+    const iconeCentros = [s(922), s(1039), s(1156)];
+    const desenharBotaoIcone = (iconeCx, desenharGlifo) => {
+      ctx.beginPath();
+      ctx.arc(iconeCx, iconeCy, iconeR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(22,24,35,0.06)';
+      ctx.fill();
+      desenharGlifo(iconeCx, iconeCy, iconeR);
+    };
+
+    // adicionar pessoa (círculo + sinal de +) — offsets relativos ao raio
+    // do ícone, pra escalar de forma consistente com `iconeR`.
+    desenharBotaoIcone(iconeCentros[0], (cx2, cy2, ir) => {
+      ctx.beginPath();
+      ctx.arc(cx2 - ir * 0.18, cy2 - ir * 0.3, ir * 0.34, 0, Math.PI * 2);
+      ctx.fillStyle = TT_TINTA;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx2 - ir * 0.18, cy2 + ir * 0.4, ir * 0.48, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = TT_TINTA;
+      ctx.lineWidth = ir * 0.17;
+      ctx.beginPath();
+      ctx.moveTo(cx2 + ir * 0.4, cy2 + ir * 0.1);
+      ctx.lineTo(cx2 + ir * 0.4, cy2 + ir * 0.62);
+      ctx.moveTo(cx2 + ir * 0.14, cy2 + ir * 0.36);
+      ctx.lineTo(cx2 + ir * 0.66, cy2 + ir * 0.36);
+      ctx.stroke();
+    });
+
+    // compartilhar (seta)
+    desenharBotaoIcone(iconeCentros[1], (cx2, cy2, ir) => {
+      ctx.strokeStyle = TT_TINTA;
+      ctx.lineWidth = ir * 0.17;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx2 - ir * 0.45, cy2 + ir * 0.45);
+      ctx.lineTo(cx2 + ir * 0.45, cy2 - ir * 0.45);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx2 - ir * 0.06, cy2 - ir * 0.45);
+      ctx.lineTo(cx2 + ir * 0.45, cy2 - ir * 0.45);
+      ctx.lineTo(cx2 + ir * 0.45, cy2 + ir * 0.06);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    });
+
+    // mais (três pontinhos)
+    desenharBotaoIcone(iconeCentros[2], (cx2, cy2, ir) => {
+      ctx.fillStyle = TT_TINTA;
+      [-ir * 0.56, 0, ir * 0.56].forEach((dx) => {
+        ctx.beginPath();
+        ctx.arc(cx2 + dx, cy2, ir * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+
+    // legenda "APENAS CONTEÚDO!" — medido: baseline 561, raio em ~429,550.
+    const legendaY = s(561);
+    desenharRaio(ctx, s(429), s(550), s(34), TT_PINK);
+    ctx.fillStyle = TT_CINZA;
+    ctx.font = `700 ${s(34)}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('APENAS CONTEÚDO!', s(468), legendaY);
+
+    return canvas;
+  }
+
+  async function aplicarTextura(modelViewer) {
+    try {
+      const canvas = desenharTextura();
+      const dataUrl = canvas.toDataURL('image/png');
+      const textura = await modelViewer.createTexture(dataUrl);
+      const material = modelViewer.model?.materials.find((m) => m.name === 'MatTelaTexto');
+      if (material && textura) {
+        material.pbrMetallicRoughness.baseColorTexture.setTexture(textura);
+        material.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]);
+      }
+    } catch (erro) {
+      // Sem quebrar a página se o navegador não suportar a API de
+      // materiais do model-viewer — o card 3D continua funcionando (só sem
+      // o texto dentro dele).
+      console.warn('[SigaTikTok] não deu pra aplicar a textura do card:', erro);
+    }
+  }
+
+  const modelViewerEl = document.getElementById('tt-model');
+  if (modelViewerEl) {
+    if (modelViewerEl.loaded) {
+      aplicarTextura(modelViewerEl);
+    } else {
+      modelViewerEl.addEventListener('load', () => aplicarTextura(modelViewerEl), { once: true });
+    }
+  }
+</script>
+
+<style>
+  .siga-tiktok {
+    --tt-cyan: #25f4ee;
+    --tt-pink: #fe2c55;
+    --tt-tinta: #161823;
+    /* Mesma fórmula de largura/centralização de `.secao` (TrilhaProdutos)
+       — pedido: "deixe ele centralizado com as sessoes". */
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: clamp(32px, 6vw, 64px) 5vw clamp(48px, 8vw, 88px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(32px, 6vw, 56px);
+    /* Ancora o `GradualBlur` (target="parent") na borda inferior da seção
+       — pedido: "coloque o efeito de desfoque já mais em cima também, ao
+       fim do card 3d", mesmo efeito já usado no fim de GaleriaTikTok.astro,
+       agora também na transição pra ela. */
+    position: relative;
+  }
+
+  /* ---- fundo: parede de cards vazios (atrás de tudo, largura total) ---- */
+  /* colunas por largura + altura mínima da seção pra caberem 3 linhas de cards
+     (altura do card = largura da coluna × 415/314) */
+  .siga-tiktok {
+    isolation: isolate;
+    --tt-n: 3;
+    --tt-gap: 12px;
+    --tt-linhas: 3;
+    --tt-col: calc((100vw - (var(--tt-n) + 1) * var(--tt-gap)) / var(--tt-n));
+    min-height: calc(var(--tt-linhas) * var(--tt-col) * 415 / 314 + (var(--tt-linhas) + 1) * var(--tt-gap));
+  }
+  @media (min-width: 600px) { .siga-tiktok { --tt-n: 4; } }
+  @media (min-width: 900px) { .siga-tiktok { --tt-n: 5; } }
+  @media (min-width: 1200px) { .siga-tiktok { --tt-n: 6; } }
+  .tt-fundo {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    display: grid;
+    grid-template-columns: repeat(var(--tt-n), 1fr);
+    align-content: start;
+    gap: var(--tt-gap);
+    padding: var(--tt-gap);
+    /* some suavemente no topo e na base (a base também tem o GradualBlur) */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 80%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 80%, transparent 100%);
+  }
+  .tt-fundo-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 314 / 415; /* proporção real das imagens */
+    border-radius: 10px;
+    background: linear-gradient(160deg, #151517 0%, #0a0a0b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .tt-fundo-card img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.5) saturate(0.9); /* escurece: o texto/card 3D vêm por cima */
+  }
+  /* véu mais forte à esquerda (onde fica o texto) e suave à direita (card 3D) */
+  .tt-fundo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.5) 45%, rgba(0, 0, 0, 0.18) 100%);
+  }
+  /* sob `html.js`: nascem escondidos e sobem escalonados quando a seção aparece */
+  :global(html.js) .tt-fundo-card { opacity: 0; transform: translateY(28px); }
+  :global(html.js) .tt-fundo--on .tt-fundo-card {
+    animation: tt-fundo-entra 0.8s var(--ed-ease, ease) both;
+    animation-delay: calc(var(--i) * 28ms);
+  }
+  @keyframes tt-fundo-entra { to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js) .tt-fundo-card { opacity: 1; transform: none; }
+    :global(html.js) .tt-fundo--on .tt-fundo-card { animation: none; }
+  }
+
+  /* mobile: o botão FOLLOW do card passa da borda de baixo e cairia sob o
+     `GradualBlur` (9rem) do fim da seção — respiro extra embaixo. */
+  @media (max-width: 759px) {
+    .siga-tiktok { padding-bottom: 10rem; }
+  }
+
+  /* 2 colunas a partir de tablet — copy à esquerda, card 3D (a
+     "demonstração") à direita, encostado na borda como antes. */
+  @media (min-width: 760px) {
+    .siga-tiktok {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  .tt-copy {
+    max-width: 480px;
+    text-align: center;
+  }
+  @media (min-width: 760px) {
+    .tt-copy { text-align: left; flex: 1 1 420px; }
+  }
+
+  /* Rótulo "Nos siga" — pedido "muito maior" + "siga a tipografia
+     streetwear". Passou pelo ScrollFloat (mesmo efeito do título) e voltou
+     pra `<p>` simples por pedido seguinte ("deixe como estava sem o
+     efeito") — só o efeito de entrada saiu, o tamanho/fonte grandes
+     ficaram. Saiu do `.rotulo` global (mono pequeno, todo label do site);
+     seletor com elemento (`p.tt-copy-kicker`) pra ganhar de `.rotulo` na
+     especificidade sem precisar de `!important`. */
+  p.tt-copy-kicker {
+    margin: 0 0 var(--sp-3);
+    font-family: 'Bigerside', sans-serif;
+    font-size: clamp(1.8rem, 1.2rem + 3vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--texto);
+  }
+
+  /* Título via ScrollFloat (React island) — escopo do Astro não alcança o
+     DOM do React, por isso `:global`. `astro-island` não herda largura por
+     padrão (mesmo ajuste de TresCardsInclinados.astro/CardsVidro.astro). */
+  .tt-copy :global(astro-island) {
+    display: block;
+  }
+  .tt-copy :global(.tt-copy-titulo-wrap) {
+    margin: 0;
+  }
+  /* Escala trocada pra bater com o título grande/bold da referência Header1
+     (`text-6xl md:text-9xl lg:text-10xl font-bold`) — maior que o
+     `clamp(1.6rem,4vw,3rem)` padrão do ScrollFloat, que ficava pequeno
+     perto do card 3D ao lado. */
+  .tt-copy :global(.tt-copy-titulo) {
+    font-family: 'Bigerside', sans-serif;
+    color: var(--texto);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 1.6rem + 5vw, 5.2rem);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+  }
+
+  .tt-copy-sub {
+    margin: 0 0 var(--sp-2);
+    font-weight: 600;
+    font-size: var(--fs-0);
+  }
+  .tt-copy-desc {
+    margin: 0;
+    color: var(--texto-fraco);
+    font-size: var(--fs-0);
+    line-height: var(--lh-normal);
+  }
+
+  .tt-scene {
+    perspective: 1400px;
+  }
+
+  .tt-3d {
+    position: relative;
+    /* Revertido — pedido: "quero que o card fique do tamanho que estava,
+       quero apenas ele com a animacao e dentro da sessao". Volta ao
+       tamanho anterior (100% tentado antes ficou grande demais). */
+    width: min(85vw, 680px);
+    aspect-ratio: 1.32 / 1;
+  }
+
+  /* Giro de entrada + expansão pra um lado — pedido: "quero que ele de um
+     giro, com a forca na horizontal do cartao e parand e expandindo",
+     depois refinado: "quero movimentos suaves". Sob `html.js` só
+     (progressive enhancement — sem JS o card fica no tamanho/posição final
+     direto, sem a etapa "pequeno e centralizado"). */
+  :global(html.js) .tt-3d {
+    transform: scale(0.8);
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  :global(html.js) .tt-3d.tt-girar {
+    /* Duração maior + easing só de desaceleração (sem o degrau abrupto de
+       antes, que pulava direto de "pequeno parado" pra "grande deslocado"
+       só no fim) — o crescimento/deslocamento agora acompanha o giro
+       inteiro, curva contínua. */
+    animation: tt-giro-expande 4.8s cubic-bezier(0.45, 0, 0.15, 1) forwards;
+  }
+
+  /* rotateY gira no eixo vertical do card — a borda esquerda/direita varre
+     na horizontal, "a força na horizontal do cartão". Escala e
+     deslocamento crescem ao longo de TODO o giro (não só no fim), pra
+     ficar suave em vez de um degrau.
+     Repouso final: SEM giro residual em CSS — a inclinação de verdade
+     agora vem da câmera REAL do model-viewer (`camera-orbit`, lida direto
+     do ângulo salvo no Blender pelo usuário: theta 46.6°, phi 94.2°), não
+     mais de um `rotateY` falso na imagem 2D renderizada (era o que causava
+     a distorção/torção — um giro CSS aproxima mal um ângulo 3D real). O
+     giro aqui é só o FLOURISH de entrada, sempre volta a 0 líquido
+     (1080deg = 3 voltas exatas). */
+  /* Giro LEVE (pedido: "giros leves, quero que ele nao gire de modo tao
+     instantaneo"): antes eram 3 voltas em 2,4 s com uma curva que já largava
+     em velocidade máxima (~2200°/s no começo). Agora 2 voltas em 4,8 s com
+     ease-in-out suave (pico ~300°/s), uma única curva contínua — escala e
+     deslocamento crescem junto, sem degrau. Termina em 0° líquido (720°). */
+  @keyframes tt-giro-expande {
+    0% {
+      transform: scale(0.8) translateX(0) rotateY(0deg);
+    }
+    100% {
+      transform: scale(1.12) translateX(5%) rotateY(720deg);
+    }
+  }
+
+  /* `prefers-reduced-motion` (ou sem IntersectionObserver): pula direto pro
+     estado final, sem girar. */
+  :global(html.js) .tt-3d.tt-girar-fim {
+    transform: scale(1.12) translateX(5%);
+    transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  .tt-model {
+    width: 100%;
+    height: 100%;
+    display: block;
+    --poster-color: transparent;
+  }
+
+  /* O card inteiro é o link agora (conteúdo textual virou textura 3D, ver
+     script `define:vars` acima) — arrastar gira a câmera (`camera-controls`
+     do model-viewer, que fica por baixo/dentro), um clique/toque sem
+     arrastar segue o perfil. */
+  .tt-card-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+
+  /* brilho rosa (esquerda) / ciano (direita) em volta do card, como na referência */
+  .tt-model {
+    filter:
+      drop-shadow(-0.6rem 0.3rem 0.9rem rgba(251, 3, 68, 0.5))
+      drop-shadow(0.7rem 0.5rem 1rem rgba(4, 238, 246, 0.42));
+  }
+
+  /* ===== Peças flutuantes (botão FOLLOW, coração, sino, cursor, coroa) =====
+     Tudo em % da caixa do card e em `cqw` (largura do card). */
+  .tt-pecas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  /* caixa do card dentro de `.tt-3d` — ajustada olhando a captura (camera-orbit) */
+  .tt-cardbox {
+    --tt-rosa: #fb0344;
+    --tt-ciano: #04eef6;
+    position: absolute;
+    /* frente do card (aro incluído) em % de `.tt-3d`, centrada no card na pose
+       final (camera-orbit 46.6°/94.2°); o plano é girado em Y pra acompanhar o
+       ângulo do modelo — `perspective` alta = fuga suave, igual à da câmera. */
+    left: 51.4%;
+    top: 54%;
+    width: 67.7%;
+    aspect-ratio: 1.78 / 1;
+    transform: translate(-50%, -50%) perspective(2500px) rotateY(-46deg);
+    container-type: inline-size;
+  }
+  /* entram depois do giro (sob `html.js`); sem JS ficam visíveis */
+  :global(html.js) .tt-pecas { opacity: 0; }
+  :global(html.js) .tt-3d.tt-girar .tt-pecas { animation: tt-aparece 1s ease 4.2s forwards; }
+  :global(html.js) .tt-3d.tt-girar-fim .tt-pecas { opacity: 1; }
+  @keyframes tt-aparece { to { opacity: 1; } }
+
+  .tt-peca {
+    position: absolute;
+    display: block;
+    animation: tt-flutua 5.5s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+  }
+  @keyframes tt-flutua {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -1.3cqw; }
+  }
+
+  /* ---- botão FOLLOW (pílula preta brilhante, aro rosa/ciano, bico embaixo) ---- */
+  .tt-follow {
+    left: 50%;
+    top: 100%;
+    width: 56cqw;
+    height: 19cqw;
+    transform: translate(-50%, -46%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4cqw;
+    border-radius: 999px;
+    background: radial-gradient(120% 170% at 28% 0%, #2a2a2f 0%, #0b0b0d 52%, #000 100%);
+    box-shadow:
+      inset 0 0.7cqw 0.5cqw rgba(255, 255, 255, 0.25),
+      inset 1.3cqw 0 0 -0.5cqw var(--tt-rosa),
+      inset -1.3cqw 0 0 -0.5cqw var(--tt-ciano),
+      inset 0 -1cqw 0.8cqw rgba(0, 0, 0, 0.6),
+      0 1.6cqw 2.2cqw rgba(0, 0, 0, 0.6),
+      -1.4cqw 0.6cqw 2.6cqw rgba(251, 3, 68, 0.55),
+      1.6cqw 1.2cqw 2.8cqw rgba(4, 238, 246, 0.5);
+  }
+  .tt-follow::after {
+    content: '';
+    position: absolute;
+    left: 56%;
+    bottom: -3.6cqw;
+    width: 5.2cqw;
+    height: 4.4cqw;
+    background: #050506;
+    clip-path: polygon(0 0, 100% 0, 38% 100%);
+    filter: drop-shadow(0.5cqw 0.4cqw 0.4cqw rgba(4, 238, 246, 0.6));
+  }
+  .tt-nota { width: 9cqw; height: 10.2cqw; overflow: visible; flex: none; }
+  .tt-nota path { fill: #fff; }
+  .tt-nota .tt-nota-ciano { fill: var(--tt-ciano); transform: translate(-3%, -2.5%); }
+  .tt-nota .tt-nota-rosa { fill: var(--tt-rosa); transform: translate(3%, 2.5%); }
+  .tt-follow-texto {
+    font-family: 'Rubik', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 8.2cqw;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: #fff;
+    text-shadow:
+      0 0.35cqw 0 #cfcfcf,
+      0 0.7cqw 0 #9a9a9a,
+      0 1cqw 0 #5a5a5a,
+      0 1.5cqw 1.4cqw rgba(0, 0, 0, 0.7);
+  }
+
+  /* ---- coração (balão vermelho, à esquerda) ---- */
+  .tt-coracao {
+    left: 0;
+    top: 32%;
+    width: 13.5cqw;
+    height: 13.5cqw;
+    transform: translate(-56%, -50%) rotate(-8deg);
+    border-radius: 24%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(145deg, #ff5b7d 0%, #ee1642 55%, #b80a30 100%);
+    box-shadow:
+      inset 0 0.6cqw 0.5cqw rgba(255, 255, 255, 0.45),
+      inset 0 -0.7cqw 0.6cqw rgba(120, 0, 25, 0.45),
+      0 1.3cqw 1.8cqw rgba(0, 0, 0, 0.5),
+      -0.6cqw 0.4cqw 2cqw rgba(251, 3, 68, 0.6);
+  }
+  .tt-coracao::after {
+    content: '';
+    position: absolute;
+    left: 22%;
+    bottom: -4cqw;
+    width: 4cqw;
+    height: 4.4cqw;
+    background: #c50f35;
+    clip-path: polygon(0 0, 100% 0, 30% 100%);
+  }
+  .tt-coracao svg { width: 62%; height: 62%; fill: #fff; filter: drop-shadow(0 0.4cqw 0.3cqw rgba(120, 0, 25, 0.5)); }
+
+  /* ---- sino (balão preto, à direita) ---- */
+  .tt-sino {
+    left: 97%;
+    top: 21%;
+    width: 14cqw;
+    height: 12.4cqw;
+    transform: translate(-50%, -50%) rotate(6deg);
+    border-radius: 22%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(150deg, #2b2b30 0%, #0c0c0e 60%, #000 100%);
+    box-shadow:
+      inset 0 0.6cqw 0.5cqw rgba(255, 255, 255, 0.22),
+      inset -0.9cqw 0 0 -0.4cqw var(--tt-rosa),
+      0 1.3cqw 1.8cqw rgba(0, 0, 0, 0.55),
+      0.8cqw 0.6cqw 2cqw rgba(4, 238, 246, 0.35);
+  }
+  .tt-sino::after {
+    content: '';
+    position: absolute;
+    left: 14%;
+    bottom: -3.6cqw;
+    width: 3.8cqw;
+    height: 4cqw;
+    background: #0a0a0c;
+    clip-path: polygon(0 0, 100% 0, 70% 100%);
+  }
+  .tt-sino svg { width: 58%; height: 58%; fill: #fff; }
+  .tt-fagulha {
+    position: absolute;
+    right: 5%;
+    top: 12%;
+    width: 0.7cqw;
+    height: 2.6cqw;
+    border-radius: 1cqw;
+    background: var(--tt-rosa);
+    transform-origin: 50% 200%;
+  }
+  .tt-fagulha--1 { transform: rotate(35deg); }
+  .tt-fagulha--2 { transform: rotate(75deg); height: 2cqw; }
+  .tt-fagulha--3 { transform: rotate(-5deg); height: 2.2cqw; }
+
+  /* ---- cursor ciano (canto inferior direito) ---- */
+  .tt-cursor {
+    left: 92%;
+    top: 92%;
+    width: 15cqw;
+    height: 17cqw;
+    transform: translate(-50%, -50%);
+    overflow: visible;
+  }
+  .tt-cursor-corpo { fill: var(--tt-ciano); stroke: #0a0a0c; stroke-width: 2.2; stroke-linejoin: round; }
+  .tt-cursor-sombra { fill: #0a0a0c; opacity: 0.55; filter: blur(0.6px); }
+
+  /* ---- coroa rabiscada (rosa, acima à direita) ---- */
+  .tt-coroa {
+    left: 80%;
+    top: -11%;
+    width: 16cqw;
+    height: 13.4cqw;
+    transform: translate(-50%, -50%) rotate(4deg);
+    overflow: visible;
+    fill: none;
+    stroke: var(--tt-rosa);
+    stroke-width: 4.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 0.6cqw rgba(251, 3, 68, 0.5));
+  }
+  .tt-coroa path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  :global(html.js) .tt-3d.tt-girar .tt-coroa path { animation: tt-traca 1.3s ease 4.8s both; }
+  @keyframes tt-traca { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tt-peca { animation: none; }
+    :global(html.js) .tt-3d.tt-girar .tt-coroa path { animation: none; }
+    :global(html.js) .tt-3d.tt-girar .tt-pecas { animation: none; opacity: 1; }
+  }
+</style>

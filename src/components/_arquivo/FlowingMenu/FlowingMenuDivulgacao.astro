@@ -1,0 +1,65 @@
+---
+/**
+ * FlowingMenuDivulgacao — metade do antigo `FlowingMenuSecao` (agora
+ * dividido em dois, pedido: "quebra menu em dois"): só o item "Divulgação"
+ * do menu fluido, isolado ANTES de `TresCardsInclinados`. A outra metade
+ * (Streetwear/Gym/Y2K/Old Money/Minimal) é `FlowingMenuCategorias`, que
+ * entra DEPOIS dos 3 cards — ver ordem em `SecaoUnica.astro`.
+ *
+ * Mesmo `FlowingMenu.tsx` de sempre, só que com 1 item na lista (o
+ * componente já suporta N itens — cada um vira uma linha `flex-1`).
+ *
+ * Cor do marquee = `nicho.acento` (mesma variável que pinta o botão "Abrir
+ * catálogo"/PixelFundoHero, ver `Hero.astro`) — este item não é de nenhuma
+ * categoria, então usa a cor GERAL do nicho em vez de um hex arbitrário
+ * (pedido: "configure as cores para geral ... cores dos menus").
+ */
+import type { Nicho } from '../../../data/tipos';
+import FlowingMenu from './FlowingMenu.tsx';
+import divulgacaoUrl from '../../../assets/hero/divulgacao-banner.jpeg?url';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+
+const items = [
+  {
+    link: 'https://wa.me/?text=Olá!%20Vim%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20divulgação.',
+    text: 'Divulgação',
+    marqueeText: 'Entre em contato',
+    image: divulgacaoUrl,
+    fontFamily: "'Bigerside', sans-serif",
+    marqueeBgColor: nicho.acento,
+    marqueeTextColor: '#ffffff',
+  },
+];
+---
+<section class="flowing-secao flowing-secao--divulgacao">
+  <FlowingMenu
+    client:visible
+    items={items}
+    speed={14}
+    textColor="var(--texto)"
+    bgColor="var(--bg)"
+    borderColor="var(--linha)"
+  />
+</section>
+
+<style>
+  .flowing-secao {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: clamp(10px, 3vw, 32px);
+  }
+  /* 1 item só — mesma altura proporcional que essa linha tinha dentro do
+     menu de 6 itens original (340-500px / 6). */
+  .flowing-secao--divulgacao {
+    height: clamp(60px, 7.3vw, 85px);
+    /* Respiro dos dois vizinhos (CardsDuplos acima, TresCardsInclinados
+       abaixo) — pedido: "de uma afastada entre divulgacao e os cards acima,
+       e entre ela e os tres cards abaixo". */
+    margin-block: 40px;
+  }
+</style>

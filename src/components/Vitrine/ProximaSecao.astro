@@ -1,0 +1,158 @@
+---
+/**
+ * ProximaSecao — a passagem entre categorias do catálogo (GradeCatalogo).
+ *
+ * Um painel grande, fixado (sticky) por uma "pista" de rolagem, que mostra o
+ * nome da PRÓXIMA categoria. Enquanto o usuário rola a pista, a cor do título
+ * migra da categoria atual para a próxima (progresso `--p`, escrito por
+ * src/lib/motion/proxima-secao.ts). O fundo da página fica preto (sem
+ * tingimento por seção). O avanço é um toque no botão.
+ *
+ * Sem JS: `--p` fica 0, o painel é um bloco estático e o botão é um link
+ * `#cat-<id>` normal. Nenhum conteúdo depende do JS.
+ */
+import { Image } from 'astro:assets';
+
+interface Props {
+  /** id da próxima categoria (alvo `#cat-<id>`). */
+  proximoId: string;
+  proximoRotulo: string;
+  /** cor da categoria atual / da próxima (#RRGGBB). */
+  corDe: string;
+  corPara: string;
+  /** posição da PRÓXIMA na sequência (1-based) e total de categorias. */
+  indice: number;
+  total: number;
+  /** arte da PRÓXIMA categoria (opcional): aparece dentro do painel e "acende"
+   *  conforme a rolagem (`--p`), no lugar do bloco preto vazio. */
+  arte?: ImageMetadata;
+}
+
+const { proximoId, proximoRotulo, corDe, corPara, indice, total, arte } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+<div
+  class="proxima"
+  data-proxima
+  style={`--de:${corDe};--para:${corPara}`}
+>
+  <div class="fixo" class:list={{ 'fixo--arte': !!arte }}>
+    <p class="contador" aria-hidden="true">{pad(indice)} / {pad(total)}</p>
+    <p class="rotulo">Próxima categoria</p>
+    {arte && (
+      <Image
+        src={arte}
+        alt=""
+        aria-hidden="true"
+        class="proxima-arte"
+        widths={[480, 768, 1200]}
+        sizes="(max-width: 600px) 90vw, 525px"
+        loading="lazy"
+      />
+    )}
+    <p class="titulo">
+      <span>{proximoRotulo}</span>
+      <span class="titulo-cor" aria-hidden="true">{proximoRotulo}</span>
+    </p>
+    <a class="cta" href={`#cat-${proximoId}`} data-proxima-ir={proximoId}>
+      Ver {proximoRotulo} <span aria-hidden="true">→</span>
+    </a>
+  </div>
+</div>
+
+<style>
+  .proxima {
+    --p: 0;
+    /* full-bleed dentro do .grade-corpo (mesmo truque dos banners) */
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    margin-top: 24px;
+    height: calc(var(--proxima-altura) + var(--proxima-pista));
+  }
+
+  .fixo {
+    position: sticky;
+    top: 0;
+    height: var(--proxima-altura);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-4);
+    padding-inline: 5vw;
+    text-align: center;
+  }
+
+  .contador {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    letter-spacing: var(--tracking-label);
+    color: var(--texto-fraco);
+  }
+
+  /* Cores clareadas em direção ao branco: categorias escuras (ex. #52606A)
+     ficam legíveis sobre o canvas escuro mesmo sem JS. */
+  .titulo {
+    position: relative;
+    margin: 0;
+    max-width: 14ch;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(2.6rem, 12vw, 8.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: color-mix(in oklab, var(--de) 65%, white);
+    transform: translateY(calc((1 - var(--p)) * 28px));
+  }
+  .titulo-cor {
+    position: absolute;
+    inset: 0;
+    color: color-mix(in oklab, var(--para) 65%, white);
+    opacity: var(--p);
+    pointer-events: none;
+  }
+
+  /* Arte da próxima categoria dentro do painel: sobe e "acende" com a rolagem
+     (`--p` 0→1, escrito por proxima-secao.ts) — sem JS fica meio apagada mas
+     visível. O título de texto encolhe (a arte já traz o nome em grande). */
+  .fixo--arte .titulo {
+    font-size: clamp(1.8rem, 5.5vw, 3.6rem);
+  }
+  .fixo :global(.proxima-arte) {
+    display: block;
+    width: min(78vw, 525px);
+    height: auto;
+    max-height: 34svh;
+    object-fit: contain;
+    opacity: calc(0.45 + var(--p) * 0.55);
+    transform: translateY(calc((1 - var(--p)) * 24px)) scale(calc(0.94 + var(--p) * 0.06));
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+    min-height: var(--toque-min);
+    padding: 0 1.4rem;
+    border: 1px solid color-mix(in oklab, var(--para) 65%, white);
+    border-radius: var(--raio-botao);
+    color: var(--texto);
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    background: color-mix(in oklab, var(--para) calc(var(--p) * 35%), transparent);
+    transition: transform var(--t-250) var(--ease-out);
+  }
+  .cta:hover {
+    transform: translateY(-2px);
+  }
+  .cta:focus-visible {
+    outline: 2px solid var(--texto);
+    outline-offset: 3px;
+  }
+</style>

@@ -1,0 +1,108 @@
+### NAV
++----------------------------------------------------------------------------------------------------------+
+| nav                                                                                                      |
+| [ico:logo] [lnk: Inicio] [lnk: Streetwear] [lnk: Gym] [lnk: Y2K] [lnk: Old Money] [lnk: Minimal]         |
+|                                                                                    [btn: Catalogo]       |
++----------------------------------------------------------------------------------------------------------+
+
+### HERO
++----------------------------------------------------------------------------------------------------------+
+| hero  (estilo poster: grafite/preto + acento = cor da secao ativa)                                       |
+|                                                                                                          |
+| +------------------------------------------------------------------------------------------------------+ |
+| | media  (arte de fundo, atras de tudo - SVG/CSS, zero imagem)                                         | |
+| | [img: asterisco metalico 3D gigante, sangra no canto sup. esq.]            [img: estrela 4 pontas]   | |
+| | [h1: STREETWEAR]   <- palavra da secao ativa: gigante, cortada nas bordas, baixo contraste           | |
+| | [img: grao de papel + vinco]      [img: grade de pontos]     [img: caco de vidro facetado, dir.]     | |
+| | [img: mini asterisco iridescente]                                                                    | |
+| |                                                                                                      | |
+| |                                                                                                      | |
+| |                                                                                                      | |
+| +------------------------------------------------------------------------------------------------------+ |
+|                                                                                                          |
+|  [t3: [*] PROMETEUS - STREETWEAR]                                               [t3: COLECAO 01/05]      |
+|                                   +------------------------------+   +------------------------------+    |
+|  [h2: Moda que faz sentido]       | card  (carrossel central)    |   | card2  (expositor)           |    |
+|  [t2: subtitulo do nicho]         | [av:] [t1: Streetwear]       |   | [img: peca do expositor]     |    |
+|                                   | [t3: 01/05]                  |   | [t2: rotulo da peca]         |    |
+|  [btn: Ver catalogo >]            | [btn2: Abrir catalogo]       |   |                              |    |
+|                                   | [lnk: < >]                   |   |                              |    |
+|                                   |                              |   |                              |    |
+|                                   |                              |   |                              |    |
+|                                   +------------------------------+   +------------------------------+    |
+|                                                                                                          |
+|  [t3: PROMETEUS (c) 2026]                                                       [t3: [*] STREETWEAR]     |
+|                                                                                                          |
++----------------------------------------------------------------------------------------------------------+
+
+### SECAO 1
++----------------------------------------------------------------------------------------------------------+
+| section  (painel CLARO, respiro preto em volta)                                                          |
+|                                                                                                          |
+|  [h1: PROMETEUS(R)]                                                           [h1: CATALOGO]             |
+|                                                                                                          |
+|  [t3: ISTO E UM ESPACO DE DESCOBERTA]                                                                    |
+|                                                                                                          |
+|                                                 +------------------------------------+                   |
+|                                                 | media                              |                   |
+|                                                 | [img: SLOT - foto / componente]    |                   |
+|  [t3: INDICE]               [t3: 1/2]           | [t3: espaco reservado 4:5]         |                   |
+|                                                 |                                    |                   |
+|  [t2: Produtos que fazem sentido, precos que]   |                                    |                   |
+|  [t2: valem a pena, curadoria em movimento.]    |                                    |                   |
+|                                                 |                                    |                   |
+|                                                 +------------------------------------+                   |
+|                                                                                                          |
+|                                                             [t3: SOBRE]                                  |
+|  [btn: [ EXPLORAR CATALOGO ]]                               [t2: Descubra. Escolha.]                     |
+|                                                             [t2: Aproveite.]                             |
+|                                                                                                          |
++----------------------------------------------------------------------------------------------------------+
+
+### SECAO 2
++----------------------------------------------------------------------------------------------------------+
+| section2  (fundo PRETO, sem imagem - numerais em degraus)                                                |
+|                                                                                                          |
+|  [t2: Cinco nichos, escolhidos]                                                     +------------------+ |
+|  [t2: com curadoria.]                                                               | card             | |
+|                                                                                     | [h1: 05]         | |
+|                                                                +------------------+ | [t3: MINIMAL]    | |
+|                                                                | card             | | [btn3: ver ->]   | |
+|                                                                | [h1: 04]         | |                  | |
+|                                           +------------------+ | [t3: OLD MONEY]  | |                  | |
+|                                           | card             | | [btn3: ver ->]   | |                  | |
+|                                           | [h1: 03]         | |                  | +------------------+ |
+|                      +------------------+ | [t3: Y2K]        | |                  |                      |
+|                      | card             | | [btn3: ver ->]   | |                  |                      |
+|                      | [h1: 02]         | |                  | +------------------+                      |
+| +------------------+ | [t3: GYM]        | |                  |                                           |
+| | card             | | [btn3: ver ->]   | |                  |                                           |
+| | [h1: 01]         | |                  | +------------------+                                           |
+| | [t3: STREETWEAR] | |                  |                                                                |
+| | [btn3: ver ->]   | |                  |                                                                |
+| |                  | +------------------+                                                                |
+| |                  |                                                                                     |
+| |                  |                                                                                     |
+| +------------------+                                                                                     |
+|  [t3: NICHOS 01-05]                                                                                      |
++----------------------------------------------------------------------------------------------------------+
+
+### SECAO 3
++----------------------------------------------------------------------------------------------------------+
+| section3  (painel de IMAGEM em largura total - so o slot)                                                |
+|                                                                                                          |
+| +------------------------------------------------------------------------------------------------------+ |
+| | media                                                                                                | |
+| | [img: SLOT - imagem / componente em largura total]                                                   | |
+| | [t3: espaco reservado]                                                                               | |
+| |                                       [btn: [ FALAR NO WHATSAPP ]]                                   | |
+| |  [t2: Para agendar uma conversa,]                                   [t2: Divulgacao e parcerias:]    | |
+| |  [t2: fale com a gente.]                                            [t2: entre em contato.]          | |
+| |                                                                                                      | |
+| |                                                                                                      | |
+| |                                                                                                      | |
+| |  [h1: CONTATO  <- gigante, cortado na borda de baixo]                                                | |
+| |                                                                                                      | |
+| |                                                                                                      | |
+| +------------------------------------------------------------------------------------------------------+ |
++----------------------------------------------------------------------------------------------------------+

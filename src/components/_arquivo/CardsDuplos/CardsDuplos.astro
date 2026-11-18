@@ -1,0 +1,160 @@
+---
+/**
+ * CardsDuplos — dois cards logo abaixo da Hero, no mesmo modelo do mockup
+ * de referência (site "HOPE": card maior à esquerda + card menor com
+ * borda à direita, empilhados no mobile). Começaram vazios (pedido:
+ * "dois cards vazios") — só a forma/proporção.
+ *
+ * O da ESQUERDA (maior) ganhou banner pronto (imagem já traz título +
+ * parágrafos + wordmark "SOUSAYL" compostos, mesmo padrão dos banners da
+ * Hero — pedido: "no card abaixo da hera, fora dela ao lado esquerdo
+ * ajuste esta imagem").
+ *
+ * O da DIREITA (menor) tem 3 vídeos de transição em rotação aleatória
+ * (pedido: "mais videos de transicao ... em aletoriedade de ordem") —
+ * arquivos em `public/cards-duplos/`, autoplay+muted+playsinline. Ao
+ * terminar cada clipe, um script client-side sorteia aleatoriamente o
+ * próximo (diferente do atual), garantindo variedade sem repetição
+ * imediata. `object-fit:cover` preenche o card em todas proporções.
+ */
+import sousaylBannerUrl from '../../../assets/cards-duplos/sousayl-banner.jpg?url';
+
+const videosTransicao = [
+  '/cards-duplos/personagem-parado.mp4',
+  '/cards-duplos/personagem-bolsos-v1.mp4',
+  '/cards-duplos/personagem-bolsos-v2.mp4',
+];
+// Sorteia índice inicial no servidor (SSR/SSG) — o script client-side
+// assume o controle a partir daí para as trocas subsequentes.
+const indiceInicial = Math.floor(Math.random() * videosTransicao.length);
+---
+<section class="cards-duplos">
+  <div
+    class="card-duplo card-duplo--grande"
+    role="img"
+    aria-label="Mais que uma loja. Um hub de boas escolhas. Produtos que fazem sentido, preços que valem a pena, uma curadoria em constante movimento. Descubra. Escolha. Aproveite. SOUSAYL."
+    style={`background-image:url(${sousaylBannerUrl})`}
+  ></div>
+  <div class="card-duplo card-duplo--pequeno">
+    <video
+      class="card-duplo-video"
+      data-videos={JSON.stringify(videosTransicao)}
+      data-indice={indiceInicial}
+      src={videosTransicao[indiceInicial]}
+      autoplay
+      muted
+      playsinline
+      aria-hidden="true"
+    ></video>
+    <div class="card-duplo-legenda">
+      <span class="card-duplo-legenda-txt">Chegou agora · novidade toda semana</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Rotação aleatória dos vídeos de transição no card direito dos CardsDuplos.
+  // Ao terminar cada clipe, sorteia o próximo dentre os demais (sem repetir
+  // o atual imediatamente), atualiza `src` e dá play.
+  const video = document.querySelector<HTMLVideoElement>('.card-duplo-video');
+  if (video) {
+    const videos: string[] = JSON.parse(video.dataset.videos ?? '[]');
+    let indiceAtual = Number(video.dataset.indice ?? 0);
+
+    function proximoAleatorio(atual: number): number {
+      if (videos.length <= 1) return atual;
+      let proximo: number;
+      do {
+        proximo = Math.floor(Math.random() * videos.length);
+      } while (proximo === atual);
+      return proximo;
+    }
+
+    video.addEventListener('ended', () => {
+      indiceAtual = proximoAleatorio(indiceAtual);
+      video.src = videos[indiceAtual];
+      video.play().catch(() => {/* autoplay bloqueado — ignora silenciosamente */});
+    });
+  }
+</script>
+
+<style>
+  /* Largura igual à da Hero (pedido: "os dois juntos" na largura do
+     painel) — mesmo box-model de `.hero-outer`/`.hero` (Hero.astro):
+     full-bleed 100vw com o MESMO respiro lateral (`--hero-pad`), sem o teto
+     de 1200px que as outras seções (`.secao`) usam. `--hero-pad` é escopado
+     ao componente Hero (Astro scoped styles) e não herda pra cá (irmãos no
+     DOM, não descendentes) — por isso o valor é duplicado aqui, não
+     referenciado via var(). */
+  .cards-duplos {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    /* Sem padding-bottom aqui — o respiro pro `FlowingMenuDivulgacao` (que
+       entra logo depois) vem do `margin-block` dele mesmo, não daqui
+       (pedido: "de uma afastada entre divulgacao e os cards acima"). */
+    padding: 0 clamp(10px, 3vw, 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .card-duplo {
+    position: relative;
+    border-radius: var(--raio);
+    border: 1px solid var(--linha);
+    background: var(--superficie);
+    min-height: 260px;
+    overflow: hidden;
+  }
+  /* Banner pronto (título + parágrafos + wordmark já compostos na imagem,
+     mesmo padrão dos banners da Hero, aplicado via `style` inline no
+     template) — cobre o card inteiro, sem repetir. */
+  .card-duplo--grande {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  /* Vídeo em loop cobrindo o card pequeno (pedido: "ajuste este video no
+     card direito fora da hera") — `overflow:hidden` do `.card-duplo` pai
+     recorta nas bordas arredondadas. */
+  .card-duplo-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  /* Legenda sobre o vídeo — scrim fixo (independe do frame do clipe em
+     rotação) pra garantir contraste; único bloco da tela que antes não
+     tinha texto nenhum. */
+  .card-duplo-legenda {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: 20px 14px 12px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 60%, transparent 100%);
+  }
+  .card-duplo-legenda-txt {
+    display: block;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  @media (min-width: 700px) {
+    .cards-duplos {
+      flex-direction: row;
+      gap: 20px;
+    }
+    .card-duplo { min-height: 0; }
+    /* Proporção ~2.4:1 (esquerda maior/direita menor), como na referência.
+       Altura da FILEIRA agora vem do vídeo (pedido: "aumente a altura dos
+       cards e deixe da altura do video") — `aspect-ratio` no card do
+       vídeo casa com a resolução real dele (1280×720, 16:9, checado via
+       ffprobe); o card grande estica junto por `align-items:stretch`
+       (default do flex row), sem precisar de altura fixa duplicada aqui. */
+    .card-duplo--grande { flex: 2.4 1 0; }
+    .card-duplo--pequeno { flex: 1 1 0; background: var(--superficie-alta); aspect-ratio: 16 / 9; }
+  }
+</style>

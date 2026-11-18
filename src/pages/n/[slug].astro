@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import SecaoUnica from '../../components/SecaoUnica.astro';
+import { StickyBanner } from '../../components/base-ui/sticky-banner';
 import { SLUGS, resolverNicho } from '../../data/nichos';
 
 // Rota estática por nicho (`/n/<slug>`) — E6-03. Usa a MESMA seção única de `/`,
@@ -16,15 +17,15 @@ const { slug } = Astro.params;
 const nicho = resolverNicho(slug);
 ---
 <Base titulo={nicho.og?.titulo ?? nicho.titulo} descricao={nicho.og?.descricao ?? nicho.subtitulo}>
+  <StickyBanner client:idle delayMs={3000}>
+    <p class="mx-0 max-w-[90%]">
+      Frete grátis em compras acima de R$ 150 — só esta semana.{' '}
+      <a href="#tela-vitrine" class="underline underline-offset-2 transition hover:opacity-80">
+        Ver catálogo
+      </a>
+    </p>
+  </StickyBanner>
   <main class="pagina">
     <SecaoUnica nicho={nicho} />
-
-    <footer class="rodape">
-      <p class="rotulo">Catálogo de vitrine · sem checkout próprio</p>
-    </footer>
   </main>
 </Base>
-
-<style>
-  .rodape { margin-top: var(--sp-8); padding-top: var(--sp-4); border-top: 1px solid var(--linha); }
-</style>

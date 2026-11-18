@@ -1,0 +1,22 @@
+---
+/**
+ * TresCardsInclinados — 3 `TiltedCard` em linha, entre `FlowingMenuDivulgacao`
+ * (acima) e `FlowingMenuCategorias` (abaixo) — o antigo `FlowingMenuSecao`
+ * foi dividido em dois pra abrir espaço pros cards no meio (pedido: "coloque
+ * de flowingmenu a parte de divulgacao acima dos cards ... embaixo deles as
+ * outras sessoes"). Pequeno respiro (`margin-block`) dos dois vizinhos, sem
+ * reabrir o box-model deles (pedido antigo: "pequena distancia entre os
+ * componentes ... dos dois cards acima e do menu a baixo").
+ */
+import FiosDestaques from './FiosDestaques.tsx';
+import itensExclusivosUrl from '../../../assets/tres-cards/itens-exclusivos.jpeg?url';
+import sousaUrl from '../../../assets/tres-cards/sousa.jpeg?url';
+import kitsExclusivosUrl from '../../../assets/tres-cards/kits-exclusivos.jpeg?url';
+
+const cards = [
+  { imageSrc: itensExclusivosUrl, altText: 'Itens exclusivos e de qualidade', captionText: 'Itens Exclusivos' },
+  { imageSrc: sousaUrl, altText: 'Sousa — a sua marca aqui', captionText: 'Sousa' },
+  { imageSrc: kitsExclusivosUrl, altText: 'Kits exclusivos em oferta', captionText: 'Kits Exclusivos' },
+];
+---
+<FiosDestaques client:visible cards={cards} />

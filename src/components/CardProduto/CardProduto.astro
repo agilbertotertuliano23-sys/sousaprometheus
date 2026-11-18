@@ -21,16 +21,16 @@ const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentav
   data-categoria={produto.categoria ?? ''}
   data-prioridade={String(produto.prioridade ?? 50)}>
   <a class="card-ir" href={`#produto-${produto.sku}`} data-ir="detalhe" data-sku={produto.sku}>
-    <div class="midia">
+    <div class="midia image">
       {video ? <VideoVertical src={video} poster={poster} alt={produto.nome} /> : <img src={img} alt={produto.nome} loading="lazy" />}
       {desconto > 0 && <span class="tarja">-{desconto}%</span>}
     </div>
-    <h3 class="nome">{produto.nome}</h3>
+    <h3 class="nome heading">{produto.nome}</h3>
   </a>
   <div class="corpo">
     <p class="desc">{produto.descricaoCurta}</p>
-    <div class="preco">
-      <strong>{formatarPreco(produto.precoCentavos)}</strong>
+    <div class="preco icons">
+      <strong class="val-preco">{formatarPreco(produto.precoCentavos)}</strong>
       {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
     </div>
     <a class="cta" href={produto.url} target="_blank" rel="noopener nofollow" data-sku={produto.sku}>
@@ -38,49 +38,168 @@ const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentav
     </a>
   </div>
 </article>
+
 <style>
+  /* Styling from Uiverse.io by ayman-ashine adaptado para CardProduto */
   .card {
-    background: var(--superficie);
-    border: 1px solid var(--linha);
-    border-radius: var(--raio);
+    --dark: #212121;
+    --darker: #111111;
+    --semidark: #2c2c2c;
+    --lightgray: #e8e8e8;
+    --unit: 10px;
+
+    background-color: var(--darker);
+    box-shadow: 0 0 var(--unit) var(--darker);
+    border: calc(var(--unit) / 2) solid var(--darker);
+    border-radius: var(--unit);
+    position: relative;
+    padding: var(--unit);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit);
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
-  .card.destaque { border-color: color-mix(in srgb, var(--acento) 60%, var(--linha)); }
-  .card-ir { display: block; }
-  .midia { position: relative; }
-  .midia img {
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(175, 64, 255, 0.35);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    width: 120%;
+    height: 35%;
+    top: 35%;
+    left: -10%;
+    background: linear-gradient(144deg, #af40ff, #5b42f3 50%, #00ddeb);
+    animation: keyframes-floating-light 2.5s infinite ease-in-out;
+    filter: blur(20px);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  @keyframes keyframes-floating-light {
+    0% {
+      transform: rotate(-5deg) translateY(-5%);
+      opacity: 0.5;
+    }
+
+    50% {
+      transform: rotate(5deg) translateY(5%);
+      opacity: 1;
+    }
+
+    100% {
+      transform: rotate(-5deg) translateY(-5%);
+      opacity: 0.5;
+    }
+  }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0%;
+    left: 0%;
+    background: linear-gradient(144deg, #af40ff, #5b42f3 50%, #00ddeb);
+    filter: blur(20px);
+    pointer-events: none;
+    animation: keyframes-intro 1s ease-in forwards;
+    z-index: 1;
+  }
+
+  @keyframes keyframes-intro {
+    100% {
+      transform: translate(-100%);
+      opacity: 0;
+    }
+  }
+
+  .card-ir { display: block; position: relative; z-index: 2; text-decoration: none; }
+  .midia { position: relative; width: 100%; overflow: hidden; border-radius: var(--card-raio); }
+  .midia img, .midia :global(video) {
     width: 100%;
     aspect-ratio: 9 / 16;
     object-fit: cover;
-    background: var(--superficie-alta);
+    display: block;
+    border-radius: var(--card-raio);
+    animation: keyframes-floating-img 10s ease-in-out infinite;
   }
+
+  @keyframes keyframes-floating-img {
+    0% {
+      transform: translate(-1.5%, 1.5%) scaleY(0.97) rotate(-3deg);
+    }
+
+    50% {
+      transform: translate(1.5%, -1.5%) scaleY(1) rotate(3deg);
+    }
+
+    100% {
+      transform: translate(-1.5%, 1.5%) scaleY(0.97) rotate(-3deg);
+    }
+  }
+
   .tarja {
     position: absolute;
     top: var(--sp-2);
     left: var(--sp-2);
-    background: var(--acento);
+    background: linear-gradient(144deg, #af40ff, #5b42f3);
     color: #fff;
     font-family: var(--f-mono);
     font-size: var(--fs-00);
     padding: 2px var(--sp-2);
     border-radius: 999px;
+    z-index: 3;
   }
-  .nome { font-size: var(--fs-1); padding: var(--sp-3) var(--sp-4) 0; }
-  .corpo { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
-  .desc { color: var(--texto-fraco); font-size: var(--fs-00); margin: var(--sp-1) 0 var(--sp-3); }
-  .preco { display: flex; align-items: baseline; gap: var(--sp-2); }
-  .preco strong { font-family: var(--f-mono); font-size: var(--fs-1); }
+  .nome, .heading {
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: center;
+    color: var(--lightgray);
+    position: relative;
+    z-index: 2;
+    margin-top: 6px;
+    padding-block: 4px;
+  }
+  .corpo { position: relative; z-index: 2; display: flex; flex-direction: column; gap: var(--sp-2); }
+  .desc { color: var(--texto-fraco); font-size: var(--fs-00); margin: 0; }
+  .preco, .icons { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+  .val-preco {
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--dark);
+    color: var(--lightgray);
+    padding: calc(var(--unit) / 2);
+    border-radius: var(--card-raio);
+    font-family: var(--f-mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .card:hover .val-preco {
+    background-color: var(--semidark);
+    color: #00ddeb;
+  }
   .preco s { color: var(--texto-fraco); font-size: var(--fs-00); }
   .cta {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: var(--toque-min);
-    margin-top: var(--sp-3);
-    border-radius: var(--raio-sm);
-    background: var(--acento);
+    border-radius: var(--card-raio);
+    background: linear-gradient(144deg, #af40ff, #5b42f3 50%, #00ddeb);
     color: #fff;
     font-family: var(--f-display);
     font-weight: 600;
+    text-decoration: none;
+    transition: filter 0.2s ease;
   }
+  .cta:hover { filter: brightness(1.15); }
 </style>

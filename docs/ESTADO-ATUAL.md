@@ -84,7 +84,8 @@ Revisão `po`: [VALIDACAO-PO.md](VALIDACAO-PO.md) — gate **CONCERNS** (Fase 0 
   `html.js` (gate CSS em `global.css`), alterna `#app[data-tela]`, faz
   `pushState`/`replaceState` com `#hash` (`#vitrine`, `#vitrine&cat=<id>`,
   `#produto=<sku>`) **preservando `location.search`**, ouve `popstate`+
-  `hashchange`, revisita começa na vitrine, religa `ligarVideoVertical` no
+  `hashchange`, 1ª tela sempre a entrada/main mesmo em revisita (D-11
+  revertida, V-8 confirmada com o dono), religa `ligarVideoVertical` no
   detalhe com guarda `Set<sku>`. Corrige de passagem o `[hidden]` da
   `VitrineFoco` (bug latente de E6-01). Falta a aferição em device (**E2-02**) e
   a seção única em `n/[slug].astro` (**E6-03** — o gate CSS já é global).

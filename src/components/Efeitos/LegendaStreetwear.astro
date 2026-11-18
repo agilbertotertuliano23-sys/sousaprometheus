@@ -1,0 +1,124 @@
+---
+/**
+ * LegendaStreetwear — legenda avulsa, centralizada, entre seções do corpo.
+ * Pedido: "coloque legendas de textos em areas nas sessoes ... centralizadas
+ * em cima e com fonte do titulo de streetwear" — mesma fonte (Bigerside) já
+ * usada no título da Hero/SigaTikTok, sem o efeito ScrollFloat (é só um
+ * texto estático de transição entre seções, não um título principal).
+ *
+ * `espacoBaixo` controla o respiro até a PRÓXIMA seção (cada chamador pede
+ * um valor — "bom espaço" acima dos 3 cards/vídeos, mais justo antes da
+ * primeira trilha de produto, que já tem padding-top próprio grande).
+ * `espacoCima` controla o respiro da seção ANTERIOR até a legenda — pedido
+ * "abaixe mais a legenda" na legenda de CardsVidro: `FlowingMenuCategorias`
+ * não tem margem inferior própria (diferente de `FlowingMenuDivulgacao`,
+ * que já tinha `margin-block: 40px`), então a legenda ficava colada nela.
+ * Sem linha/divisor junto — pedido explícito foi tirar a linha e deixar as
+ * seções próximas, não trocar uma linha por outra.
+ *
+ * Textos em rascunho (mesmo padrão de Faq.astro/SigaTikTok.astro) — revisar
+ * antes de publicar.
+ *
+ * `fonte`/`peso`/`caixaAlta` — pedido "teste" na legenda de CardsVidro:
+ * tipografia geométrica sans-serif, bold, caixa alta (referência colada:
+ * card "RULES" skeuomórfico). 'Montserrat' já é carregada no site (Google
+ * Fonts, ver Base.astro) e é uma geométrica de verdade — evita adicionar
+ * uma fonte nova só pra este teste. Fica opcional, com o default (Bigerside/
+ * normal/sem transform) intacto pras outras 3 legendas.
+ */
+interface Props {
+  texto: string;
+  espacoBaixo?: string;
+  espacoCima?: string;
+  fonte?: string;
+  peso?: string;
+  caixaAlta?: boolean;
+  /** Linha curta sob o texto, que entra (scaleX 0→1) ao cruzar a viewport
+   * na rolagem. Opt-in — as outras legendas ficam como estavam (ver nota
+   * "sem linha" no cabeçalho, específica da legenda de CardsVidro). */
+  linha?: boolean;
+}
+
+const {
+  texto,
+  espacoBaixo = 'clamp(40px, 6vw, 72px)',
+  espacoCima = 'clamp(24px, 4vw, 48px)',
+  fonte = "'Bigerside', sans-serif",
+  peso = '400',
+  caixaAlta = false,
+  linha = false,
+} = Astro.props;
+---
+<div
+  class="legenda-streetwear"
+  style={`--legenda-espaco-baixo: ${espacoBaixo}; --legenda-espaco-cima: ${espacoCima}; --legenda-fonte: ${fonte}; --legenda-peso: ${peso}; --legenda-transform: ${caixaAlta ? 'uppercase' : 'none'}`}
+>
+  {linha && <span class="legenda-streetwear-linha" aria-hidden="true"></span>}
+  <p class="legenda-streetwear-texto">{texto}</p>
+</div>
+
+<style>
+  .legenda-streetwear {
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: 0 5vw;
+    margin-top: var(--legenda-espaco-cima);
+    margin-bottom: var(--legenda-espaco-baixo);
+    text-align: center;
+  }
+
+  .legenda-streetwear-texto {
+    margin: 0;
+    font-family: var(--legenda-fonte);
+    font-weight: var(--legenda-peso);
+    text-transform: var(--legenda-transform);
+    color: var(--texto);
+    font-size: clamp(1.8rem, 1.2rem + 3vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+
+  .legenda-streetwear-linha {
+    display: block;
+    width: clamp(64px, 12vw, 140px);
+    height: 2px;
+    /* Nasce logo abaixo do FlowingMenu (acima na página) — legenda entra
+       DEPOIS dela, ver `margin: 0 auto var(--sp-4)`. */
+    margin: 0 auto var(--sp-4);
+    background: var(--acento);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.6s ease-out;
+  }
+
+  .legenda-streetwear-linha.revelada {
+    transform: scaleX(1);
+  }
+</style>
+
+<script>
+  // Dedupe automático do Astro: mesmo com 3 instâncias de LegendaStreetwear
+  // na página, este módulo só roda 1x. Só afeta `.legenda-streetwear-linha`
+  // (presente apenas nas instâncias com `linha` — as demais não têm o nó).
+  const prefereMenosMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const linhas = document.querySelectorAll<HTMLElement>('.legenda-streetwear-linha');
+
+  if (linhas.length > 0) {
+    if (prefereMenosMovimento() || typeof IntersectionObserver === 'undefined') {
+      linhas.forEach((el) => el.classList.add('revelada'));
+    } else {
+      const io = new IntersectionObserver(
+        (entradas, obs) => {
+          entradas.forEach((entrada) => {
+            if (!entrada.isIntersecting) return;
+            entrada.target.classList.add('revelada');
+            obs.unobserve(entrada.target);
+          });
+        },
+        { threshold: 0.6 },
+      );
+      linhas.forEach((el) => io.observe(el));
+    }
+  }
+</script>

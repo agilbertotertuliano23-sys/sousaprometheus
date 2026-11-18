@@ -1,0 +1,64 @@
+---
+/**
+ * NavBanner — faixa de navegação dentro do hero-outer, acima do painel hero.
+ * Agora vive DENTRO de `.hero-outer` (que já é 100vw full-bleed com padding
+ * lateral). Por isso não precisa mais do escape `width:100vw / margin-inline`
+ * — herda a largura do pai diretamente.
+ */
+import type { Categoria } from '../../../data/tipos';
+import PillNav from '../PillNav/PillNav.tsx';
+
+interface Props {
+  categorias: Categoria[];
+}
+
+const { categorias } = Astro.props;
+
+const pillItems = [
+  { label: 'Início', href: '#tela-entrada' },
+  ...categorias.map((cat) => ({ label: cat.rotulo, href: `#cat-${cat.id}` })),
+  { label: 'Catálogo', href: '#tela-vitrine' },
+];
+---
+<nav class="nav-banner" aria-label="Navegação rápida">
+  <div class="nav-banner-in">
+    <PillNav
+      client:load
+      logo="/favicon.svg"
+      logoAlt="Prometeus"
+      items={pillItems}
+      activeHref="#tela-entrada"
+      baseColor="#0A0B0C"
+      pillColor="var(--acento)"
+      hoveredPillTextColor="#fff"
+      pillTextColor="#fff"
+      ease="power3.out"
+      initialLoadAnimation={false}
+    />
+  </div>
+</nav>
+<style>
+  .nav-banner {
+    /* Ocupa toda a largura do hero-outer (que já tem padding lateral).
+       Sem full-bleed extra — o pai já cuida do posicionamento. */
+    width: 100%;
+    background: transparent;
+    padding-block: clamp(6px, 1vw, 12px);
+    position: relative;
+    z-index: 20;
+  }
+  .nav-banner-in {
+    /* Container flex para garantir que o PillNav (row interno) se expanda
+       corretamente. NÃO sobrescreve display em filhos — deixa o React
+       do PillNav gerenciar seu próprio layout flex. */
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+  /* Apenas a astro-island wrapper ocupa largura total — sem tocar em div
+     interno do PillNav para não quebrar o flex row dos itens. */
+  .nav-banner-in :global(astro-island) {
+    width: 100%;
+    display: block;
+  }
+</style>

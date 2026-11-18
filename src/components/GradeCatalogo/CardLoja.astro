@@ -1,0 +1,189 @@
+---
+/**
+ * CardLoja — card de produto da página do catálogo (`GradeCatalogo.astro`),
+ * skin "sufgang" (ref. sufgang.com.br, `product_list`): foto 3/4 sobre cinza
+ * #f2f2f2, sem caixa nem cantos; nome em caixa alta pequena + preço logo
+ * abaixo, alinhados à esquerda. No hover a 2ª foto (modelo) entra por cima e
+ * sobe a faixa "Ver produto" na base da foto (no lugar do "Adicionar" da ref.).
+ * Preço "de" riscado + preço em vermelho (--acento) quando há desconto.
+ *
+ * O card inteiro é UM link (`<a class="loja-card">`) pra tela de detalhe — o
+ * botão é um <span> (não pode haver <a>/<button> dentro de <a>). `data-*`
+ * preservados: `data-ir="detalhe"` + `data-sku` (roteador de telas), e
+ * `data-nome` (busca do catálogo, minúsculo). Cores vêm dos tokens `--loja-*`
+ * definidos em `.grade` (GradeCatalogo).
+ */
+import type { Produto } from '../../data/tipos';
+import { galeriaDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
+import { formatarPreco, percentualDesconto } from '../../lib/utils';
+
+interface Props {
+  produto: Produto;
+  slug: string;
+}
+
+const { produto, slug } = Astro.props;
+const galeria = galeriaDe(produto);
+const capa = galeria[0];
+const capaSrc = capa && capa.tipo === 'imagem' ? capa.src : produto.imagem;
+const capaAlt = capa?.alt ?? produto.nome;
+const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentavos);
+
+// 2ª foto (modelo) pro hover — mesma regra do MiniProduto.
+const hoverItem = galeria.find((g, idx) => idx > 0 && g.tipo === 'imagem') ?? null;
+const hoverSrc = hoverItem ? hoverItem.src : (capaSrc.includes('_1.') ? capaSrc.replace('_1.', '_2.') : null);
+// clipe após 1 s de hover — mesma regra do MiniProduto (lib/motion/video-hover).
+const videoSrc = produto.video ? urlAsset(slug, produto.video) : null;
+---
+<a
+  class="loja-card"
+  href={`#produto-${produto.sku}`}
+  data-ir="detalhe"
+  data-sku={produto.sku}
+  data-categoria={produto.categoria ?? ''}
+  data-prioridade={String(produto.prioridade ?? 50)}
+  data-nome={produto.nome.toLowerCase()}>
+  <span class="loja-tile">
+    <img class="loja-capa" src={urlAsset(slug, capaSrc)} alt={capaAlt} loading="lazy" decoding="async" />
+    {hoverSrc && (
+      <img
+        class="loja-capa-hover"
+        src={urlAsset(slug, hoverSrc)}
+        alt={`Modelo - ${capaAlt}`}
+        loading="lazy"
+        decoding="async"
+      />
+    )}
+    {videoSrc && (
+      <video class="loja-video" data-video-hover data-src={videoSrc} muted loop playsinline preload="none" aria-hidden="true"></video>
+    )}
+    {desconto > 0 && <span class="loja-selo">-{desconto}%</span>}
+    <span class="loja-acao" aria-hidden="true">Ver produto</span>
+  </span>
+  <span class="loja-nome">{produto.nome}</span>
+  <span class:list={['loja-preco', { 'loja-preco--oferta': desconto > 0 }]}>
+    {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
+    <span>{formatarPreco(produto.precoCentavos)}</span>
+  </span>
+</a>
+
+<style>
+  .loja-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    color: var(--loja-tinta, #000);
+    text-decoration: none;
+  }
+  .loja-card:focus-visible { outline: 1px solid var(--loja-tinta, #000); outline-offset: 4px; }
+
+  /* foto 3/4 sobre cinza claro, sem cantos */
+  .loja-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    margin-bottom: 6px;
+    background: var(--loja-tile, #f2f2f2);
+  }
+  .loja-capa,
+  .loja-capa-hover {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 22%;
+    transition: opacity 0.45s var(--ed-ease, ease);
+  }
+  .loja-capa-hover { opacity: 0; z-index: 2; pointer-events: none; }
+  .loja-card:hover .loja-capa-hover { opacity: 1; }
+
+  /* clipe cobre as fotos depois de 1 s de hover (classe vem do script) */
+  .loja-video {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s var(--ed-ease, ease);
+  }
+  .loja-card.video-ativo .loja-video { opacity: 1; }
+
+  /* selo de desconto: retângulo preto no canto, como o "Sold out" da ref. */
+  .loja-selo {
+    position: absolute;
+    z-index: 3;
+    top: 10px;
+    left: 10px;
+    padding: 4px 8px;
+    background: var(--loja-tinta, #000);
+    color: var(--loja-papel, #fff);
+    font-family: var(--f-display);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+  }
+
+  /* faixa que sobe da base da foto no hover (o "Adicionar" da ref.) */
+  .loja-acao {
+    position: absolute;
+    z-index: 3;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    background: var(--loja-papel, #fff);
+    color: var(--loja-tinta, #000);
+    font-family: var(--f-display);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transform: translateY(100%);
+    transition: transform 0.35s var(--ed-ease, ease);
+  }
+  .loja-card:hover .loja-acao,
+  .loja-card:focus-visible .loja-acao { transform: translateY(0); }
+  /* toque não tem hover: a faixa não aparece, o card inteiro já é o link */
+  @media (hover: none) { .loja-acao { display: none; } }
+
+  .loja-nome {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-family: var(--f-display);
+    font-weight: 500;
+    font-size: 0.78rem;
+    line-height: 1.3;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .loja-preco {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-family: var(--f-corpo);
+    font-size: 0.8rem;
+    color: var(--loja-tinta, #000);
+  }
+  .loja-preco s { color: color-mix(in srgb, var(--loja-tinta, #000) 45%, transparent); }
+  .loja-preco--oferta > span { color: var(--acento); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loja-capa, .loja-capa-hover, .loja-acao { transition: none; }
+  }
+</style>
+
+<script>
+  import { ligarVideoHover } from '../../lib/motion/video-hover';
+  ligarVideoHover();
+</script>

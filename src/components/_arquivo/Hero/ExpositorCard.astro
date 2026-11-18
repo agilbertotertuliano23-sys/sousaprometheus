@@ -1,0 +1,543 @@
+---
+/**
+ * ExpositorCard — canto inferior-direito da Hero.
+ *
+ * RESTING (recolhido):
+ *   - Mostra APENAS a imagem do expositor (vidro) da peça atual
+ *   - Tamanho compacto com bordas arredondadas (24px)
+ *   - Autoplay a cada 2 s com transição de fade suave entre peças
+ *
+ * HOVER EXPANDIDO:
+ *   - Expande para dimensão reduzida e compacta (220px a 260px de largura x 270px a 320px de altura)
+ *   - Imagem do modelo em 100% do card
+ *   - Revela visivelmente os textos internos (tag, título da peça e indicadores) com animação translateY e fade
+ *   - Botão circular Uiverse.io por Creatlydev integrado em proporção harmoniosa na lateral direita
+ *
+ * Sincroniza com o driver central via evento `hero:secao`.
+ *
+ * Visual REFEITO no estilo "editorial minimalista" (mesmo sistema do
+ * MiniProduto e dos cards de vídeo — tokens `--ed-*` em global.css): cantos
+ * retos, fio fino, sem blur/sombra; o botão redondo com texto giratório virou
+ * um quadrado de fio com a seta. Markup (exceto o botão) e script iguais.
+ */
+
+import swBranca1 from '../../../assets/hero/expositor/streetwear_blusa_branca_1.jpeg?url';
+import swBranca2 from '../../../assets/hero/expositor/streetwear_blusa_branca_2.jpeg?url';
+import swPreta1  from '../../../assets/hero/expositor/streetwear_blusa_preta_1.webp?url';
+import swPreta2  from '../../../assets/hero/expositor/streetwear_blusa_preta_2.jpeg?url';
+
+import gymCompressao1  from '../../../assets/hero/expositor/gym_camisa_compreessao_1.png?url';
+import gymCompressao2  from '../../../assets/hero/expositor/gym_camisa_compreessao_2.jpeg?url';
+import gymCompressaoF1 from '../../../assets/hero/expositor/gym_compressao_f_1.jpeg?url';
+import gymCompressaoF2 from '../../../assets/hero/expositor/gym_compressao_f_2.jpeg?url';
+import gymMacacao1     from '../../../assets/hero/expositor/gym_macacao_1.jpeg?url';
+import gymMacacao2     from '../../../assets/hero/expositor/gym_macacao_2.jpeg?url';
+
+import y2kBlusa1 from '../../../assets/hero/expositor/y2k_blusa_curta_1.webp?url';
+import y2kBlusa2 from '../../../assets/hero/expositor/y2k_blusa_curta_2.jpeg?url';
+import y2kSaia1  from '../../../assets/hero/expositor/y2k_saia_1.jpeg?url';
+import y2kSaia2  from '../../../assets/hero/expositor/y2k_saia_2.jpeg?url';
+
+import omBlusaAzul1  from '../../../assets/hero/expositor/old_money_blusa_azul_1.webp?url';
+import omBlusaAzul2  from '../../../assets/hero/expositor/old_money_blusa_azul_2.jpeg?url';
+import omBlusaPreta1 from '../../../assets/hero/expositor/old_money_blusa_preta_1.webp?url';
+import omBlusaPreta2 from '../../../assets/hero/expositor/old_money_blusa_preta_2.jpeg?url';
+
+import minCalca1 from '../../../assets/hero/expositor/minimal_calca_1.jpeg?url';
+import minCalca2 from '../../../assets/hero/expositor/minimal_calca_2.jpeg?url';
+import minGola1  from '../../../assets/hero/expositor/minimal_gola_alta_1.webp?url';
+import minGola2  from '../../../assets/hero/expositor/minimal_gola_alta_2.jpeg?url';
+import minShort1 from '../../../assets/hero/expositor/minimal_short_1.webp?url';
+import minShort2 from '../../../assets/hero/expositor/minimal_short_2.jpeg?url';
+
+const PECAS_POR_SECAO: Record<string, { rotulo: string; expositor: string; modelo?: string }[]> = {
+  streetwear: [
+    { rotulo: 'Blusa Branca', expositor: swBranca1, modelo: swBranca2 },
+    { rotulo: 'Blusa Preta',  expositor: swPreta1,  modelo: swPreta2 },
+  ],
+  gym: [
+    { rotulo: 'Camisa Compressão', expositor: gymCompressao1,  modelo: gymCompressao2 },
+    { rotulo: 'Compressão F',     expositor: gymCompressaoF1, modelo: gymCompressaoF2 },
+    { rotulo: 'Macacão Gym',       expositor: gymMacacao1,     modelo: gymMacacao2 },
+  ],
+  y2k: [
+    { rotulo: 'Blusa Curta', expositor: y2kBlusa1, modelo: y2kBlusa2 },
+    { rotulo: 'Saia Y2K',    expositor: y2kSaia1,  modelo: y2kSaia2 },
+  ],
+  'old-money': [
+    { rotulo: 'Blusa Azul',  expositor: omBlusaAzul1,  modelo: omBlusaAzul2 },
+    { rotulo: 'Blusa Preta', expositor: omBlusaPreta1, modelo: omBlusaPreta2 },
+  ],
+  minimal: [
+    { rotulo: 'Calça Minimal', expositor: minCalca1, modelo: minCalca2 },
+    { rotulo: 'Gola Alta',     expositor: minGola1,  modelo: minGola2 },
+    { rotulo: 'Short Minimal', expositor: minShort1, modelo: minShort2 },
+  ],
+};
+
+const pecasJson = JSON.stringify(PECAS_POR_SECAO);
+const secaoInicial = 'streetwear';
+const p0 = PECAS_POR_SECAO[secaoInicial][0];
+---
+
+<div class="exp-card" id="expositor-card">
+
+  <!-- ── RESTING: expositor (vidro) ─────────────────────────────────── -->
+  <div class="exp-resting">
+    <!-- img A e img B para crossfade suave -->
+    <img class="exp-expo exp-expo--a is-active" src={p0.expositor} alt={p0.rotulo} loading="lazy" decoding="async" />
+    <img class="exp-expo exp-expo--b"            src={p0.expositor} alt={p0.rotulo} loading="lazy" decoding="async" />
+  </div>
+
+  <!-- ── EXPANDIDO (hover): modelo cobrindo 100% do card ────────────── -->
+  <div class="exp-expanded">
+    <div class="exp-modelo-wrap">
+      <img
+        class="exp-modelo-img"
+        src={p0.modelo ?? p0.expositor}
+        alt={`Modelo - ${p0.rotulo}`}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+
+    <div class="exp-info">
+      <div class="exp-info-texto">
+        <span class="exp-tag">Coleção Exclusiva</span>
+        <span class="exp-rotulo">{p0.rotulo}</span>
+        <div class="exp-dots" aria-hidden="true">
+          {PECAS_POR_SECAO[secaoInicial].map((_, i) => (
+            <span class:list={[{ ativa: i === 0 }]} />
+          ))}
+        </div>
+      </div>
+
+      <!-- Botão Uiverse.io por Creatlydev -->
+      <div class="exp-button-wrap">
+        <a class="button" href="#tela-vitrine" data-ir="vitrine" aria-label="Ver item">
+          <div class="button__circle">
+            <svg
+              viewBox="0 0 14 15"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="button__icon"
+              width="12"
+            >
+              <path
+                d="M13.376 11.552l-.264-10.44-10.44-.24"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+              <path
+                d="M13.112 1.112L1.112 13.112"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+
+            <svg
+              viewBox="0 0 14 15"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="button__icon button__icon--copy"
+              width="12"
+            >
+              <path
+                d="M13.376 11.552l-.264-10.44-10.44-.24"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+              <path
+                d="M13.112 1.112L1.112 13.112"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script define:vars={{ pecasJson, secaoInicial }}>
+  (() => {
+    const PECAS   = JSON.parse(pecasJson);
+    const card    = document.getElementById('expositor-card');
+    if (!card) return;
+
+    const expoA   = card.querySelector('.exp-expo--a');
+    const expoB   = card.querySelector('.exp-expo--b');
+    const modImg  = card.querySelector('.exp-modelo-img');
+    const rotulo  = card.querySelector('.exp-rotulo');
+    const dots    = card.querySelector('.exp-dots');
+
+    if (!expoA || !expoB || !modImg || !rotulo || !dots) return;
+
+    let secao    = secaoInicial;
+    let idx      = 0;
+    let useA     = true; // qual img está "na frente"
+    let timer    = null;
+
+    // ── Atualiza imagem de resting com crossfade ──────────────────────────
+    function mostrarExpositor(src, alt) {
+      const next = useA ? expoB : expoA;
+      const prev = useA ? expoA : expoB;
+
+      next.src = src;
+      next.alt = alt;
+      const doSwap = () => {
+        next.classList.add('is-active');
+        prev.classList.remove('is-active');
+        useA = !useA;
+      };
+      if (next.complete) {
+        doSwap();
+      } else {
+        next.onload = doSwap;
+      }
+    }
+
+    // ── Atualiza modelo (hover) ───────────────────────────────────────────
+    function mostrarModelo(peca) {
+      modImg.src = peca.modelo ?? peca.expositor;
+      modImg.alt = `Modelo - ${peca.rotulo}`;
+    }
+
+    // ── Rebuild dots ──────────────────────────────────────────────────────
+    function buildDots(pecas) {
+      dots.innerHTML = '';
+      pecas.forEach((_, i) => {
+        const s = document.createElement('span');
+        if (i === 0) s.classList.add('ativa');
+        dots.appendChild(s);
+      });
+    }
+
+    function atualizarDot(pecas) {
+      dots.querySelectorAll('span').forEach((s, i) =>
+        s.classList.toggle('ativa', i === idx)
+      );
+    }
+
+    // ── Avança ────────────────────────────────────────────────────────────
+    function avancar() {
+      const pecas = PECAS[secao] ?? [];
+      if (!pecas.length) return;
+      idx = (idx + 1) % pecas.length;
+      const peca = pecas[idx];
+      mostrarExpositor(peca.expositor, peca.rotulo);
+      mostrarModelo(peca);
+      rotulo.textContent = peca.rotulo;
+      atualizarDot(pecas);
+    }
+
+    // ── Autoplay 2 s ──────────────────────────────────────────────────────
+    function iniciar() {
+      clearInterval(timer);
+      timer = setInterval(avancar, 2000);
+    }
+    function parar() { clearInterval(timer); }
+
+    card.addEventListener('mouseenter', parar);
+    card.addEventListener('mouseleave', iniciar);
+
+    // ── Troca de seção via driver ─────────────────────────────────────────
+    document.addEventListener('hero:secao', (e) => {
+      const mapa = {
+        basicos: 'streetwear', streetwear: 'streetwear',
+        gym: 'gym', y2k: 'y2k', 'old-money': 'old-money', minimal: 'minimal',
+      };
+      const novaChave = mapa[e.detail?.categoriaId] ?? 'streetwear';
+      if (novaChave === secao) return;
+
+      secao = novaChave;
+      idx   = 0;
+      parar();
+
+      const pecas = PECAS[secao] ?? [];
+      const peca  = pecas[0];
+      if (!peca) return;
+
+      mostrarExpositor(peca.expositor, peca.rotulo);
+      mostrarModelo(peca);
+      rotulo.textContent = peca.rotulo;
+      buildDots(pecas);
+      iniciar();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    const pecasInicio = PECAS[secao] ?? [];
+    buildDots(pecasInicio);
+    mostrarModelo(pecasInicio[0]);
+    iniciar();
+  })();
+</script>
+
+<style>
+  /* ── Container ────────────────────────────────────────────────────────────── */
+  .exp-card {
+    position: relative;
+    width: clamp(130px, 13vw, 150px);
+    height: clamp(170px, 17vw, 195px);
+    cursor: pointer;
+  }
+
+  /* ── Resting: retângulo de fio fino, cantos retos ─────────────────────────── */
+  .exp-resting {
+    position: absolute;
+    inset: 0;
+    background: #0b0b0b;
+    border: 1px solid var(--ed-linha-forte);
+    border-radius: 0;
+    overflow: hidden;
+    /* Desaparece ao hover */
+    transition: opacity 0.4s ease 0.35s;
+  }
+  .exp-card:hover .exp-resting {
+    opacity: 0;
+    transition-delay: 0s;
+  }
+
+  /* Crossfade: img A e B se sobrepõem, a com .is-active fica por cima */
+  .exp-expo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    border-radius: 0;
+  }
+  .exp-expo.is-active {
+    opacity: 1;
+  }
+
+  /* ── Expanded (hover): dimensão reduzida e compacta ─────────────────────── */
+  .exp-expanded {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    /* Estado inicial = recolhido e invisível */
+    width: clamp(130px, 13vw, 150px);
+    height: clamp(170px, 17vw, 195px);
+    padding: 0;
+    background: #0b0b0b;
+    border: 1px solid var(--ed-linha-forte);
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    opacity: 0;
+    overflow: hidden;
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.35s ease;
+  }
+  .exp-card:hover .exp-expanded {
+    width: clamp(220px, 22vw, 260px);
+    height: clamp(270px, 28vw, 320px);
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0.08s;
+  }
+
+  /* Foto do modelo COBRE 100% DO CARD EXPANDIDO */
+  .exp-modelo-wrap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 0;
+    background: #111;
+    z-index: 1;
+  }
+  .exp-modelo-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  /* Info: legenda na base — etiqueta, nome, risquinhos de posição e botão */
+  .exp-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    padding: 12px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 62%, transparent 100%);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .exp-info-texto {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .exp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.72);
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.56rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: var(--ed-tracking);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.35s ease 0.2s, transform 0.35s ease 0.2s;
+  }
+  /* pontinho na cor da categoria (única cor do card) */
+  .exp-tag::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 0;
+    background: var(--acento, #fff);
+  }
+  .exp-card:hover .exp-tag {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .exp-rotulo {
+    display: block;
+    color: #ffffff;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.35s ease 0.25s, transform 0.35s ease 0.25s;
+  }
+  .exp-card:hover .exp-rotulo {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .exp-dots {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.35s ease 0.3s, transform 0.35s ease 0.3s;
+  }
+  .exp-card:hover .exp-dots {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .exp-dots span {
+    width: 14px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.35);
+    transition: background 0.25s;
+  }
+  .exp-dots span.ativa {
+    background: #fff;
+  }
+
+  /* ── Botão: quadrado de fio com seta (sai o disco com texto giratório) ────── */
+  .exp-button-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.35s ease 0.25s, transform 0.35s ease 0.25s;
+  }
+  .exp-card:hover .exp-button-wrap {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .button {
+    cursor: pointer;
+    border: 1px solid var(--ed-linha-forte);
+    background: transparent;
+    color: #ffffff;
+    width: 36px;
+    height: 36px;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    display: grid;
+    place-content: center;
+    text-decoration: none;
+    transition: background 300ms var(--ed-ease), color 300ms var(--ed-ease), border-color 300ms var(--ed-ease);
+  }
+
+  .button__circle {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    color: inherit;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .button__icon--copy {
+    position: absolute;
+    transform: translate(-150%, 150%);
+  }
+
+  .button:hover {
+    background: #ffffff;
+    color: #0a0b0c;
+    border-color: #ffffff;
+  }
+
+  .button:hover .button__icon:first-child {
+    transition: transform 0.3s ease-in-out;
+    transform: translate(150%, -150%);
+  }
+
+  .button:hover .button__icon--copy {
+    transition: transform 0.3s ease-in-out 0.1s;
+    transform: translate(0);
+  }
+
+  .button:focus-visible { outline: 1px solid #fff; outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exp-expo, .exp-tag, .exp-rotulo, .exp-dots, .exp-button-wrap, .button { transition: none; }
+  }
+</style>

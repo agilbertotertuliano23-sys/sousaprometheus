@@ -1,0 +1,390 @@
+---
+/**
+ * Hero — skin "sufgang" (ref. sufgang.com.br, seção `fade_gallery`): galeria
+ * full-bleed, borda a borda, sem cantos nem moldura, que troca de cena por
+ * cross-fade. Uma cena por categoria (Streetwear, Gym, Y2K, Old Money,
+ * Minimal), montada com as MESMAS camadas da hero anterior
+ * (src/assets/hero/cenas/<secao>/{fundo,modelo}.webp + logo.webp, o letreiro
+ * recortado nas letras) — só sem os efeitos por seção, paralaxe e cards
+ * flutuantes.
+ *
+ * A imagem aparece INTEIRA (pedido: "permita ver a hero completa"): quadro na
+ * proporção exata das cenas, sem teto de altura nem recorte, e NADA por cima
+ * dela além do logo. Nome da coleção + CTA retangular branco + barras de
+ * progresso ficam numa faixa preta logo abaixo da imagem. O CTA abre a vitrine filtrada pela categoria da cena
+ * (`data-ir="vitrine"` + `data-cat`, contrato de telas.ts).
+ *
+ * Vive dentro de `#tela-entrada` (SecaoUnica). A versão anterior (painel com
+ * glow + carrosséis + expositor + camadas com efeitos) está em
+ * components/_arquivo/Hero/HeroPainel.astro.
+ */
+import type { Nicho } from '../../data/tipos';
+import { resolverCategorias } from '../../lib/catalogo/resolver';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+
+const URLS = import.meta.glob('../../assets/hero/cenas/*/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const url = (secao: string, camada: 'fundo' | 'modelo' | 'logo') =>
+  URLS[`../../assets/hero/cenas/${secao}/${camada}.webp`] ?? '';
+
+/**
+ * Logo de cada cena = o letreiro original RECORTADO nas letras
+ * (cenas/<secao>/logo.webp, gerado a partir de letreiro.webp). Fica numa
+ * camada própria por cima do cenário/modelo. Geometria na composição
+ * original (frações do quadro 2752×1536): `cx`/`cy` = centro, `w` = largura,
+ * `ar` = proporção do logo (larg/alt).
+ * Gym: o "GYM" vertical ficava atrás das costas do modelo (escondido) —
+ * passou pra frente, à esquerda dele.
+ */
+interface Cena {
+  id: string;
+  logo: { cx: number; cy: number; w: number; ar: number };
+}
+const CENAS: Cena[] = [
+  { id: 'streetwear', logo: { cx: 0.4988, cy: 0.5763, w: 0.9058, ar: 2.4051 } },
+  { id: 'gym', logo: { cx: 0.2, cy: 0.5, w: 0.214, ar: 0.4792 } },
+  { id: 'y2k', logo: { cx: 0.5033, cy: 0.5304, w: 0.9923, ar: 3.33 } },
+  { id: 'old-money', logo: { cx: 0.4987, cy: 0.4946, w: 0.4312, ar: 8.1036 } },
+  { id: 'minimal', logo: { cx: 0.4939, cy: 0.4971, w: 0.5423, ar: 7.4603 } },
+];
+
+const porId = new Map(resolverCategorias(nicho, 'a').map((cat) => [cat.id, cat] as const));
+const cenas = CENAS.filter((c) => url(c.id, 'fundo')).map((c) => ({
+  ...c,
+  rotulo: porId.get(c.id)?.rotulo ?? c.id,
+  temCategoria: porId.has(c.id),
+}));
+---
+<section class="hero-sg" aria-roledescription="carrossel" aria-label={`Coleções ${nicho.nome}`} data-hero-sg>
+  <div class="hero-sg-cenas">
+    {cenas.map((cena, i) => {
+      const ativa = i === 0;
+      // só a 1ª cena baixa no load; as outras via `data-src` (script abaixo)
+      const src = (camada: 'fundo' | 'modelo' | 'logo') =>
+        ativa ? { src: url(cena.id, camada) } : { 'data-src': url(cena.id, camada) };
+      const { cx, cy, w, ar } = cena.logo;
+      return (
+        <div
+          class:list={['hero-sg-cena', { 'is-ativa': ativa }]}
+          data-cena={cena.id}
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`${i + 1} de ${cenas.length}: ${cena.rotulo}`}
+          aria-hidden={ativa ? undefined : 'true'}
+        >
+          <div class="hero-sg-quadro">
+            <img class="hero-sg-camada hero-sg-fundo" alt="" decoding="async" fetchpriority={ativa ? 'high' : 'auto'} {...src('fundo')} />
+            <img class="hero-sg-camada" alt="" decoding="async" {...src('modelo')} />
+            <img
+              class="hero-sg-logo"
+              style={`--cx:${cx};--cy:${cy};--w:${w};--ar:${ar}`}
+              alt=""
+              decoding="async"
+              {...src('logo')}
+            />
+          </div>
+
+          <div class="hero-sg-legenda">
+            <div class="hero-sg-nome">
+              <p class="hero-sg-kicker">{nicho.nome} · Coleção</p>
+              <h2 class="hero-sg-titulo">{cena.rotulo}</h2>
+            </div>
+            <a
+              class="hero-sg-cta"
+              href={cena.temCategoria ? `#cat-${cena.id}` : '#tela-vitrine'}
+              data-ir="vitrine"
+              data-cat={cena.temCategoria ? cena.id : undefined}
+              tabindex={ativa ? undefined : -1}
+            >
+              Ver coleção
+            </a>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+
+  {cenas.length > 1 && (
+    <div class="hero-sg-barras" role="tablist" aria-label="Escolher coleção">
+      {cenas.map((cena, i) => (
+        <button
+          class:list={['hero-sg-barra', { 'is-ativa': i === 0 }]}
+          type="button"
+          role="tab"
+          aria-selected={i === 0 ? 'true' : 'false'}
+          aria-label={cena.rotulo}
+          data-ir-cena={i}
+        >
+          <span></span>
+        </button>
+      ))}
+    </div>
+  )}
+</section>
+
+<script>
+  // Cross-fade automático (6 s por cena) + barras clicáveis. Pausa com o
+  // ponteiro/foco em cima, com a aba oculta e fora da tela; com movimento
+  // reduzido não avança sozinho (as barras continuam funcionando).
+  const raiz = document.querySelector<HTMLElement>('[data-hero-sg]');
+  if (raiz) {
+    const cenas = Array.from(raiz.querySelectorAll<HTMLElement>('.hero-sg-cena'));
+    const barras = Array.from(raiz.querySelectorAll<HTMLButtonElement>('.hero-sg-barra'));
+    const reduzir = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const TEMPO = 6000;
+    let atual = 0;
+    let timer = 0;
+    let visivel = true;
+    let pausado = false;
+
+    const carregar = (cena?: HTMLElement) => {
+      cena?.querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => {
+        img.src = img.dataset.src ?? '';
+        img.removeAttribute('data-src');
+      });
+    };
+
+    // reinicia o preenchimento da barra ativa (o timer sempre recomeça do 0)
+    const reiniciarBarra = () => {
+      barras.forEach((b, k) => {
+        const fill = b.querySelector('span');
+        if (!fill) return;
+        fill.style.animation = 'none';
+        void fill.offsetWidth;
+        fill.style.animation = k === atual ? '' : 'none';
+      });
+    };
+
+    const agendar = () => {
+      clearTimeout(timer);
+      const parado = pausado || !visivel;
+      raiz.classList.toggle('is-pausado', parado);
+      if (reduzir || parado || cenas.length < 2) return;
+      reiniciarBarra();
+      timer = window.setTimeout(() => ir(atual + 1), TEMPO);
+    };
+
+    const ir = (i: number) => {
+      atual = (i + cenas.length) % cenas.length;
+      carregar(cenas[atual]);
+      carregar(cenas[(atual + 1) % cenas.length]);
+      cenas.forEach((c, k) => {
+        const on = k === atual;
+        c.classList.toggle('is-ativa', on);
+        c.toggleAttribute('aria-hidden', !on);
+        const cta = c.querySelector('.hero-sg-cta');
+        if (on) cta?.removeAttribute('tabindex');
+        else cta?.setAttribute('tabindex', '-1');
+      });
+      barras.forEach((b, k) => {
+        b.classList.toggle('is-ativa', k === atual);
+        b.setAttribute('aria-selected', String(k === atual));
+      });
+      reiniciarBarra();
+      agendar();
+    };
+
+    const pausar = (p: boolean) => { pausado = p; agendar(); };
+
+    barras.forEach((b) => b.addEventListener('click', () => ir(Number(b.dataset.irCena))));
+    raiz.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') pausar(true); });
+    raiz.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') pausar(false); });
+    raiz.addEventListener('focusin', () => pausar(true));
+    raiz.addEventListener('focusout', () => pausar(false));
+    document.addEventListener('visibilitychange', () => pausar(document.hidden));
+    new IntersectionObserver(([e]) => { visivel = e.isIntersecting; agendar(); }).observe(raiz);
+
+    // aquece a 2ª cena quando o navegador estiver ocioso
+    'requestIdleCallback' in window
+      ? requestIdleCallback(() => carregar(cenas[1]))
+      : setTimeout(() => carregar(cenas[1]), 1200);
+    if (reduzir) raiz.classList.add('is-estatico');
+    agendar();
+  }
+</script>
+
+<style>
+  /* A hero mostra a composição INTEIRA: o quadro tem exatamente a proporção
+     das cenas (2752×1536), borda a borda, sem teto de altura nem recorte.
+     A legenda (nome + CTA) e as barras ficam numa faixa preta logo abaixo,
+     fora da imagem. */
+  .hero-sg {
+    --hero-tempo: 6s;
+    --faixa: 76px;
+    position: relative;
+    /* full-bleed: o pai (`.pagina`) é uma coluna de 480px */
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    background: var(--c-preto);
+    color: #fff;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  /* cenas empilhadas na mesma célula do grid: a altura vem do conteúdo
+     (quadro + faixa) e o cross-fade é só opacidade */
+  .hero-sg-cenas { display: grid; }
+  .hero-sg-cena {
+    grid-area: 1 / 1;
+    position: relative;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1.2s var(--ease-in-out-soft), visibility 0s linear 1.2s;
+  }
+  .hero-sg-cena.is-ativa {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 1.2s var(--ease-in-out-soft), visibility 0s;
+  }
+
+  .hero-sg-quadro {
+    position: relative;
+    aspect-ratio: 2752 / 1536;
+    overflow: hidden;
+    container-type: inline-size;
+  }
+  .hero-sg-camada {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+  }
+
+  /* Logo na posição da composição original (frações do quadro). `cqw` =
+     largura do quadro; a altura do quadro é cqw × 1536/2752. */
+  .hero-sg-logo {
+    --Ph: calc(100cqw * 1536 / 2752);
+    --W: min(var(--w) * 100cqw, var(--Ph) * 0.96 * var(--ar));
+    --Hl: calc(var(--W) / var(--ar));
+    position: absolute;
+    z-index: 2;
+    width: var(--W);
+    height: var(--Hl);
+    left: clamp(0px, var(--cx) * 100cqw - var(--W) / 2, 100cqw - var(--W));
+    top: clamp(0px, var(--cy) * var(--Ph) - var(--Hl) / 2, var(--Ph) - var(--Hl));
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* zoom lento no cenário da cena ativa — o "respiro" da ref. Só encolhe
+     até 1 (nunca corta além do quadro no estado final). */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-sg-fundo {
+      transform: scale(1.04);
+      transition: transform 7s linear;
+    }
+    .hero-sg-cena.is-ativa .hero-sg-fundo { transform: scale(1); }
+  }
+
+  /* ---- faixa abaixo da imagem ---- */
+  .hero-sg-legenda {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    min-height: var(--faixa);
+    padding: var(--sp-3) clamp(16px, 3vw, 40px);
+  }
+  .hero-sg-nome { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .hero-sg-kicker {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--texto-fraco);
+  }
+  .hero-sg-titulo {
+    font-size: clamp(1rem, 0.9rem + 0.6vw, 1.35rem);
+    letter-spacing: 0.12em;
+    line-height: 1.1;
+    color: #fff;
+  }
+  /* CTA da ref.: retângulo branco, texto preto em caixa alta; inverte no hover */
+  .hero-sg-cta {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: clamp(18px, 2.4vw, 32px);
+    background: #fff;
+    color: #000;
+    border: 1px solid #fff;
+    border-radius: var(--raio-botao);
+    font-family: var(--f-display);
+    font-size: var(--fs-00);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: background-color var(--t-250) var(--ease-out), color var(--t-250) var(--ease-out);
+  }
+  .hero-sg-cta:hover,
+  .hero-sg-cta:focus-visible {
+    background: transparent;
+    color: #fff;
+  }
+
+  /* indicadores em barra, no centro da faixa; enchem durante o tempo da cena */
+  .hero-sg-barras {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: calc(var(--faixa) / 2);
+    translate: -50% 50%;
+    display: flex;
+    gap: 8px;
+  }
+  .hero-sg-barra {
+    width: clamp(28px, 4vw, 48px);
+    height: 20px; /* área de toque; o traço é o span */
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    display: grid;
+    align-items: center;
+  }
+  .hero-sg-barra::before,
+  .hero-sg-barra span {
+    grid-area: 1 / 1;
+    height: 2px;
+  }
+  .hero-sg-barra::before {
+    content: '';
+    background: rgba(255, 255, 255, 0.32);
+  }
+  .hero-sg-barra span {
+    background: #fff;
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .hero-sg-barra.is-ativa span {
+    animation: hero-sg-enche var(--hero-tempo) linear forwards;
+  }
+  .hero-sg.is-pausado .hero-sg-barra.is-ativa span { animation-play-state: paused; }
+  .hero-sg.is-estatico .hero-sg-barra.is-ativa span { animation: none; transform: scaleX(1); }
+  @keyframes hero-sg-enche { to { transform: scaleX(1); } }
+
+  /* celular: sem espaço no meio da faixa — as barras vão pra uma linha
+     própria, abaixo do nome/CTA */
+  @media (max-width: 700px) {
+    .hero-sg-barras {
+      position: static;
+      translate: none;
+      justify-content: center;
+      padding-bottom: var(--sp-3);
+    }
+    .hero-sg-barra { width: 28px; }
+  }
+</style>

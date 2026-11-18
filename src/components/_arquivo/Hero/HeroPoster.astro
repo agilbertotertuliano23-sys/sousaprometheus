@@ -1,0 +1,157 @@
+---
+/**
+ * HeroPoster — a composição do pôster de referência
+ * (design-systems/hero-poster-haus/reference-hero-poster.jpg) desenhada POR CIMA
+ * das fotos em camadas da Hero (HeroCamadas.astro). É renderizado 2× por cena,
+ * uma por camada, pra respeitar a profundidade do pôster (o modelo passa NA
+ * FRENTE das peças de trás, como no pôster onde os cacos cobrem o texto):
+ *
+ *  - camada="atras"  → entre o cenário e letreiro/modelo: fileiras da palavra
+ *    gigante cortada, cacos de vidro, grade de pontos, vinco de papel, grão.
+ *  - camada="frente" → por cima do modelo: legendas mono (vertical, tag,
+ *    rodapé) e o selo ©.
+ *
+ * SÓ peças estáticas: os asteriscos que giravam e as estrelas que piscavam
+ * foram removidos a pedido ("retire os elementos animados de dentro da hero").
+ * Os gradientes SVG (`#hp-*`) vêm de HeroCamadas (definidos uma vez só).
+ * Nada aqui usa JS: a palavra/legendas já nascem com o nome da cena.
+ * Legendas em português (o pôster original é em inglês).
+ */
+interface Props {
+  camada: 'atras' | 'frente';
+  /** nome da seção em caixa alta (ex.: "STREETWEAR"). */
+  nome: string;
+  /** índice "01"…"05". */
+  idx: string;
+}
+
+const { camada, nome, idx } = Astro.props;
+---
+{camada === 'atras' && (
+  <div class="pst pst--atras" aria-hidden="true">
+    <div class="pst-grao"></div>
+    <div class="pst-txt pst-txt--1">{nome}</div>
+    <div class="pst-txt pst-txt--2">{nome}</div>
+    <div class="pst-txt pst-txt--3">{nome}</div>
+    <div class="pst-vinco"></div>
+    <div class="pst-grade"></div>
+
+    <div class="pst-peca pst-caco pst-caco--a">
+      <svg viewBox="0 0 100 100"><polygon points="4,4 98,14 62,98" fill="url(#hp-vidro)" stroke="url(#hp-borda)" stroke-width="0.6" stroke-linejoin="round" /><polygon points="4,4 98,14 90,20 10,10" fill="#fff" opacity="0.1" /></svg>
+    </div>
+    <div class="pst-peca pst-caco pst-caco--b">
+      <svg viewBox="0 0 100 100"><polygon points="2,10 92,2 96,92" fill="url(#hp-vidro)" stroke="url(#hp-borda)" stroke-width="0.6" stroke-linejoin="round" /><polygon points="2,10 92,2 92,8 8,16" fill="#fff" opacity="0.1" /></svg>
+    </div>
+
+  </div>
+)}
+
+{camada === 'frente' && (
+  <div class="pst pst--frente" aria-hidden="true">
+    <p class="pst-leg pst-leg--vert">Na dúvida, escolha um estilo <b>[*]</b></p>
+    <p class="pst-leg pst-leg--meio">Moda que faz sentido.<br />Curadoria que vale a pena.</p>
+    <p class="pst-leg pst-leg--tag"><b>[*]</b><br />Coleção {idx}/05<br />{nome}</p>
+    <p class="pst-leg pst-leg--base"><span class="pst-traco"></span>PROMETEUS*</p>
+    <p class="pst-selo"><span>© PROMETEUS 2026</span></p>
+    <p class="pst-leg pst-leg--por">Por Prometeus</p>
+  </div>
+)}
+
+<style>
+  .pst { position: absolute; inset: 0; pointer-events: none; }
+  .pst--atras { z-index: 0; }
+  .pst--frente { z-index: 6; }
+
+  /* grão de papel */
+  .pst-grao {
+    position: absolute;
+    inset: 0;
+    opacity: 0.13;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: screen;
+  }
+
+  /* fileiras da palavra gigante, cortadas nas bordas (como "ASTERISK" no pôster) */
+  .pst-txt {
+    position: absolute;
+    font-family: 'Anton', 'Bebas Neue', Impact, sans-serif;
+    font-size: clamp(120px, 26vw, 470px);
+    line-height: 0.86;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.1);
+    user-select: none;
+  }
+  .pst-txt--1 { top: -12%; left: 34%; }
+  .pst-txt--2 { top: 25%; left: -9%; }
+  .pst-txt--3 { bottom: -17%; left: 22%; }
+
+  .pst-vinco {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 52%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2) 22%, rgba(255, 255, 255, 0.06) 62%, transparent);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .pst-grade {
+    position: absolute;
+    right: 20%;
+    top: 7%;
+    width: 17%;
+    aspect-ratio: 16 / 9;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.13) 1px, transparent 1px),
+      radial-gradient(rgba(255, 255, 255, 0.34) 1px, transparent 1.4px);
+    background-size: 1.6vw 1.6vw, 1.6vw 1.6vw, 0.8vw 0.8vw;
+    -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 40%, transparent 100%);
+  }
+
+  .pst-peca { position: absolute; aspect-ratio: 1; filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.5)); }
+  .pst-peca svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  .pst-caco--a { right: -8%; top: 5%; width: 31%; transform: rotate(-9deg); }
+  .pst-caco--b { right: 9%; bottom: -24%; width: 36%; transform: rotate(196deg); }
+
+  /* legendas mono minúsculas — o acento é a cor da seção (--acento) */
+  .pst-leg, .pst-selo {
+    position: absolute;
+    margin: 0;
+    font-family: var(--f-mono, ui-monospace, monospace);
+    font-size: clamp(8px, 0.72vw, 11px);
+    letter-spacing: 0.14em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  }
+  .pst-leg b { color: var(--acento, #f4c542); font-weight: 700; }
+  .pst-leg--vert { left: 1.3%; top: 30%; writing-mode: vertical-rl; }
+  .pst-leg--meio { left: 24%; top: 77%; max-width: 24ch; }
+  .pst-leg--tag { right: 2.4%; top: 30%; text-align: right; }
+  .pst-leg--base { left: 2.4%; bottom: 3.4%; display: flex; align-items: center; gap: 0.8em; }
+  .pst-traco { display: inline-block; width: clamp(40px, 9vw, 130px); height: 1px; background: rgba(255, 255, 255, 0.45); }
+  .pst-selo { right: 2.4%; bottom: 7.4%; }
+  .pst-selo span {
+    display: inline-block;
+    padding: 0.3em 0.7em;
+    border: 1px solid var(--acento, #f4c542);
+    color: var(--acento, #f4c542);
+    font-size: clamp(7px, 0.62vw, 10px);
+  }
+  .pst-leg--por { right: 2.4%; bottom: 3.4%; }
+
+  @media (max-width: 899px) {
+    .pst-grade, .pst-caco--b, .pst-leg--vert, .pst-leg--meio, .pst-leg--base, .pst-selo, .pst-leg--por { display: none; }
+    .pst-caco--a { width: 44%; right: -14%; }
+    .pst-leg--tag { top: 22%; }
+    .pst-txt { font-size: clamp(90px, 38vw, 220px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pst *, .pst *::after { animation: none !important; }
+  }
+</style>

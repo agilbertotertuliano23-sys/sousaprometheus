@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import SecaoUnica from '../components/SecaoUnica.astro';
+import { StickyBanner } from '../components/base-ui/sticky-banner';
 import { NICHO_PADRAO, resolverNicho } from '../data/nichos';
 
 // Seção única com 3 telas (porta → catálogo → detalhe — ADR-008 Fase 0).
@@ -8,20 +9,16 @@ import { NICHO_PADRAO, resolverNicho } from '../data/nichos';
 // O markup vive em SecaoUnica.astro (fonte única, compartilhada com n/[slug]).
 const nicho = resolverNicho(NICHO_PADRAO);
 ---
-<Base>
+<Base intro>
+  <StickyBanner client:idle delayMs={2000}>
+    <p class="mx-0 max-w-[90%]">
+      Frete grátis em compras acima de R$ 150 — só esta semana.{' '}
+      <a href="#tela-vitrine" class="underline underline-offset-2 transition hover:opacity-80">
+        Ver catálogo
+      </a>
+    </p>
+  </StickyBanner>
   <main class="pagina">
     <SecaoUnica nicho={nicho} />
-
-    <footer class="rodape">
-      <p class="rotulo">Catálogo de vitrine · sem checkout próprio</p>
-    </footer>
   </main>
 </Base>
-
-<style>
-  .rodape {
-    margin-top: var(--sp-8);
-    padding-top: var(--sp-4);
-    border-top: 1px solid var(--linha);
-  }
-</style>

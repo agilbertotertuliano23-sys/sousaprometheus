@@ -1,0 +1,195 @@
+---
+/**
+ * SecaoDegraus — 2ª seção depois da Hero (referência HAUS Studio): fundo PRETO,
+ * sem imagem; numerais gigantes dentro de caixas brancas que sobem em degraus
+ * da esquerda pra direita, cada uma com rótulo, texto curto e link. Aqui os
+ * degraus são os 5 nichos reais (mesma seleção/ordem da Hero), cada um levando
+ * pra `#cat-<id>`. Wireframe: `### SECAO 2` em
+ * design-systems/hero-poster-haus/wireframe.txt.
+ *
+ * Movimento: cada degrau entra UMA vez ao aparecer (transição de
+ * opacity/transform, escalonada por `--i`). Só liga com `html.js`; sem JS ou
+ * com `prefers-reduced-motion` tudo aparece já no lugar.
+ */
+import type { Nicho } from '../../data/tipos';
+import { resolverCategorias } from '../../lib/catalogo/resolver';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+
+// Mesma seleção/ordem da Hero (trilha fixa de 5 nichos).
+const ORDEM = ['streetwear', 'gym', 'y2k', 'old-money', 'minimal'] as const;
+const FALLBACK: Record<string, string> = {
+  streetwear: 'Silhuetas soltas, grafismo e atitude de rua.',
+  gym: 'Compressão, respirabilidade e performance no treino.',
+  y2k: 'Brilho, cor e a nostalgia dos anos 2000.',
+  'old-money': 'Alfaiataria clássica e tons discretos.',
+  minimal: 'Linhas limpas, paleta neutra, nada de ruído.',
+};
+const categorias = resolverCategorias(nicho, 'a');
+const porId = new Map(categorias.map((c) => [c.id, c] as const));
+const degraus = ORDEM.map((id, i) => {
+  const cat = porId.get(id);
+  return {
+    id,
+    n: i + 1,
+    rotulo: cat?.rotulo ?? id.toUpperCase(),
+    descricao: cat?.descricao ?? FALLBACK[id],
+    cor: cat?.cor ?? nicho.acento,
+  };
+});
+---
+<section class="hx-degraus" aria-labelledby="hx-degraus-titulo">
+  <div class="hx-intro">
+    <h2 class="hx-mono" id="hx-degraus-titulo">Nichos</h2>
+    <p class="hx-texto">
+      Cinco nichos, escolhidos com curadoria. Cada um com o seu estilo, a sua
+      paleta e as suas peças — do treino à rua, do clássico ao minimal.
+    </p>
+  </div>
+
+  <ol class="hx-escada">
+    {degraus.map((d) => (
+      <li class="hx-degrau" style={`--i:${d.n - 1};--cat:${d.cor}`}>
+        <a class="hx-caixa" href={`#cat-${d.id}`} aria-label={`${d.rotulo} — ver categoria`}>
+          <span class="hx-mono hx-rotulo">{d.rotulo}</span>
+          <span class="hx-num" aria-hidden="true">{d.n}</span>
+        </a>
+        <div class="hx-legenda">
+          <p class="hx-texto">{d.descricao}</p>
+          <a class="hx-ver hx-mono" href={`#cat-${d.id}`} tabindex="-1" aria-hidden="true">Ver →</a>
+        </div>
+      </li>
+    ))}
+  </ol>
+
+  <p class="hx-mono hx-rodape">Nichos 01 — 05</p>
+</section>
+
+<style>
+  .hx-degraus {
+    --pad: clamp(10px, 3vw, 32px);
+    --hx-papel: #f2f2ef;
+    --hx-tinta: #0a0a0a;
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding: clamp(48px, 8vw, 120px) var(--pad) clamp(28px, 4vw, 56px);
+    background: #000;
+    color: var(--hx-papel);
+  }
+
+  .hx-mono {
+    margin: 0;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.66rem, 0.6rem + 0.25vw, 0.8rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    line-height: 1.25;
+  }
+  .hx-texto {
+    margin: 0;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.74rem, 0.68rem + 0.28vw, 0.9rem);
+    font-weight: 500;
+    line-height: 1.4;
+    color: rgba(242, 242, 239, 0.86);
+  }
+
+  .hx-intro { display: flex; flex-direction: column; gap: 10px; max-width: 30ch; margin-bottom: clamp(28px, 5vw, 60px); }
+
+  /* mobile: 2 colunas, sem escada; o 5º ocupa a linha inteira */
+  .hx-escada {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(10px, 2.4vw, 20px);
+  }
+  .hx-degrau:nth-child(5) { grid-column: 1 / -1; }
+  .hx-degrau { display: flex; flex-direction: column; gap: 10px; }
+
+  .hx-caixa {
+    position: relative;
+    display: block;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    padding: 10px 12px;
+    background: var(--hx-papel);
+    color: var(--hx-tinta);
+    text-decoration: none;
+    transition: background-color 0.25s ease;
+  }
+  .hx-degrau:nth-child(5) .hx-caixa { aspect-ratio: 16 / 9; }
+  .hx-caixa:hover, .hx-caixa:focus-visible { background: var(--cat); }
+  .hx-caixa:focus-visible { outline: 2px solid var(--hx-papel); outline-offset: 3px; }
+
+  /* numeral gigante cortado na base da caixa */
+  .hx-num {
+    position: absolute;
+    left: 50%;
+    bottom: -14%;
+    translate: -50% 0;
+    font-family: 'Anton', 'Bebas Neue', Impact, sans-serif;
+    font-size: clamp(150px, 34vw, 420px);
+    line-height: 0.78;
+    pointer-events: none;
+  }
+
+  .hx-legenda { display: flex; flex-direction: column; gap: 6px; }
+  .hx-ver { color: var(--cat); text-decoration: none; }
+
+  .hx-rodape { margin-top: clamp(20px, 3vw, 40px); color: rgba(242, 242, 239, 0.6); }
+
+  /* desktop: 5 colunas em degraus — o 1 embaixo, o 5 no topo */
+  @media (min-width: 900px) {
+    .hx-escada {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      align-items: start;
+    }
+    .hx-degrau:nth-child(5) { grid-column: auto; }
+    .hx-degrau { margin-top: calc((4 - var(--i)) * clamp(26px, 5.4vw, 92px)); }
+    .hx-caixa, .hx-degrau:nth-child(5) .hx-caixa { aspect-ratio: 3 / 4; }
+    .hx-num { font-size: clamp(120px, 19vw, 330px); bottom: -10%; }
+    .hx-intro { position: absolute; top: clamp(48px, 8vw, 120px); left: var(--pad); margin: 0; }
+  }
+
+  /* entrada única, escalonada — só com JS ligado */
+  :global(html.js) .hx-degrau { opacity: 0; transform: translate3d(0, 34px, 0); }
+  :global(html.js) .hx-degrau.is-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(var(--i) * 90ms);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js) .hx-degrau { opacity: 1; transform: none; }
+    .hx-caixa { transition: none; }
+  }
+</style>
+
+<script>
+  const degraus = document.querySelectorAll<HTMLElement>('.hx-degrau');
+  if (degraus.length) {
+    if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      degraus.forEach((d) => d.classList.add('is-in'));
+    } else {
+      const obs = new IntersectionObserver(
+        (entradas) => {
+          entradas.forEach((e) => {
+            if (!e.isIntersecting) return;
+            (e.target as HTMLElement).classList.add('is-in');
+            obs.unobserve(e.target);
+          });
+        },
+        { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
+      );
+      degraus.forEach((d) => obs.observe(d));
+    }
+  }
+</script>

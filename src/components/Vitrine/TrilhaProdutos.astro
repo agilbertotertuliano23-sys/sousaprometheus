@@ -1,16 +1,15 @@
 ---
 /**
- * TrilhaProdutos — E6-05 (ADR-008 Fase 0). Faixa horizontal rolável de minis:
- * `<h2>` + kicker/descrição opcionais + `<ol class="trilha-carrossel">`.
- *
- * Usada pelo Bloco 2a ("Em alta", cross-categoria) e por cada categoria efetiva
- * (Bloco 2b, com `id="cat-<id>"` — a âncora que a porta e `telas.ts` usam).
- *
- * `scroll-snap` nativo (Embla só se o slice de medição E6-06 pedir). Astro puro,
- * sem `<script>`. Trilha vazia ainda renderiza o `<h2 id>` (âncora resolve).
+ * TrilhaProdutos — cada seção do corpo possui um BANNER em gradiente + texto
+ * (kicker, título e descrição) e cards de produto.
+ * Gradientes dinâmicos exclusivos por seção.
  */
 import type { Produto } from '../../data/tipos';
 import MiniProduto from './MiniProduto.astro';
+import { Image } from 'astro:assets';
+import bannerEmAlta from '../../assets/hero/secao-banners/em-alta-secao-banner.png';
+import bannerKits from '../../assets/hero/secao-banners/kits-secao-banner.png';
+import bannerRecomendados from '../../assets/hero/secao-banners/recomendados-secao-banner.png';
 
 interface Props {
   titulo: string;
@@ -19,55 +18,265 @@ interface Props {
   id?: string;
   kicker?: string;
   descricao?: string;
+  primeira?: boolean;
 }
 
-const { titulo, produtos, slug, id, kicker, descricao } = Astro.props;
+const { titulo, produtos, slug, id, kicker, descricao, primeira = false } = Astro.props;
+
+// Banner de imagem exclusivo por seção (a arte já traz o título embutido).
+function obterBannerSecao(id?: string, titulo?: string) {
+  const chave = (id || titulo || '').toLowerCase();
+  if (chave.includes('alta')) return bannerEmAlta;
+  if (chave.includes('kit')) return bannerKits;
+  if (chave.includes('recomend')) return bannerRecomendados;
+  return undefined;
+}
+
+const bannerSecao = obterBannerSecao(id, titulo);
+
+// Mapeamento de cores de gradiente exclusivas por seção
+function obterCoresGradiente(id?: string, titulo?: string): [string, string, string] {
+  const chave = (id || titulo || '').toLowerCase();
+  if (chave.includes('alta') || chave.includes('destaque')) {
+    return ['#ff007f', '#7928ca', '#00dfd8']; // Neon Pink - Violet - Cyan
+  } else if (chave.includes('gym')) {
+    return ['#ff0844', '#ff4e50', '#f9d423']; // Fire Red - Orange - Yellow
+  } else if (chave.includes('y2k')) {
+    return ['#f43f5e', '#a855f7', '#06b6d4']; // Y2K Pink - Purple - Cyan
+  } else if (chave.includes('old') || chave.includes('money')) {
+    return ['#d4af37', '#059669', '#10b981']; // Gold - Emerald - Mint
+  } else if (chave.includes('minimal')) {
+    return ['#38bdf8', '#818cf8', '#c084fc']; // Sky - Indigo - Lavender
+  } else if (chave.includes('kit')) {
+    return ['#00f2fe', '#4facfe', '#6366f1']; // Electric Cyan - Blue
+  } else if (chave.includes('básico') || chave.includes('basico')) {
+    return ['#e11d48', '#9333ea', '#2563eb']; // Rose - Purple - Blue
+  } else {
+    return ['#af40ff', '#5b42f3', '#00ddeb']; // Default Uiverse gradient
+  }
+}
+
+const [g1, g2, g3] = obterCoresGradiente(id, titulo);
 ---
-<section class="trilha" id={id}>
-  <h2 class="trilha-titulo">{titulo}</h2>
-  {kicker && <p class="trilha-kicker rotulo">{kicker}</p>}
-  {descricao && <p class="trilha-descricao">{descricao}</p>}
+<section
+  class="secao"
+  id={id}
+  class:list={{ 'secao--primeira': primeira }}
+  style={`--card-grad-1: ${g1}; --card-grad-2: ${g2}; --card-grad-3: ${g3};`}
+>
+  {primeira && <div class="secao-divisor secao-divisor--entrada" aria-hidden="true"></div>}
+
+  <!-- Pedido: "faca o banner estar entre linhas paralelas em cima e em
+       baixo" — linha nova espelhando `secao-divisor--topo`, em toda seção
+       (não só a primeira). -->
+  <div class="secao-divisor secao-divisor--acima" aria-hidden="true"></div>
+
+  <div class="secao-banner" class:list={{ 'secao-banner--img': !!bannerSecao }}>
+    {bannerSecao ? (
+      <Image
+        src={bannerSecao}
+        alt={titulo}
+        class="secao-banner-img"
+        widths={[640, 960, 1440, 1920]}
+        sizes="100vw"
+        loading={primeira ? 'eager' : 'lazy'}
+      />
+    ) : (
+      <div class="secao-banner-in">
+        {kicker && <p class="rotulo secao-kicker">{kicker}</p>}
+        <h2 class="secao-titulo">{titulo}</h2>
+        {descricao && <p class="secao-desc">{descricao}</p>}
+      </div>
+    )}
+  </div>
+
+  <div class="secao-divisor secao-divisor--topo" aria-hidden="true"></div>
+
   {produtos.length > 0 ? (
-    <ol class="trilha-carrossel">
+    <ol class="secao-grid">
       {produtos.map((p) => (
         <li><MiniProduto produto={p} slug={slug} /></li>
       ))}
     </ol>
   ) : (
-    <p class="trilha-vazia">Nada nesta categoria por enquanto.</p>
+    <p class="secao-vazia">Nada nesta categoria por enquanto.</p>
   )}
+
+  <div class="secao-divisor" aria-hidden="true"></div>
 </section>
+
 <style>
-  .trilha { margin-block: var(--bloco-espaco, var(--sp-6)); }
-  .trilha-titulo { font-size: var(--fs-2); }
-  .trilha-kicker { margin: var(--sp-1) 0 0; }
-  .trilha-descricao {
-    color: var(--texto-fraco);
-    font-size: var(--fs-00);
-    margin: var(--sp-1) 0 0;
+  .secao {
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: 48px 5vw clamp(56px, 8vw, 100px);
+    text-align: center;
   }
-  .trilha-carrossel {
-    list-style: none;
-    margin: var(--sp-3) 0 0;
-    padding: 0;
+
+  .secao--primeira { padding-top: clamp(110px, 13vw, 190px); }
+
+  .secao-banner {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: 0;
+    border-radius: 0;
+    height: auto;
+    min-height: clamp(90px, 10vw, 130px);
+    overflow: hidden;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, var(--card-grad-1), var(--card-grad-2), var(--card-grad-3));
+    border-block: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     display: flex;
-    gap: var(--trilha-gap, var(--sp-3));
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    padding-block: var(--sp-2);
+    align-items: center;
+    justify-content: center;
   }
-  .trilha-carrossel > li {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
+  .secao-banner--img {
+    min-height: 0;
+    background: none;
+    border-block: none;
+    box-shadow: none;
+    display: block;
   }
-  .trilha-vazia {
+  /* Pedido: "retire as linhas que demarcam as imagens e comeco e fim" —
+     removido o friso de cima/embaixo da arte que existia antes.
+     Pedido depois: "ajuste e expanda os banners para cobrirem a regiao do
+     espaco que estao" — tirado o teto de 860px, a arte cobre 100% da
+     largura do container full-bleed (100vw).
+     Pedido depois: "nao quero que a sua altura seja tao grande ... quero
+     que fique na altura dos cards entre os menu flowings" — altura fixa
+     (mesma escala dos cards de `TresCardsInclinados`).
+     Pedido depois: "nao quero que recorte, desejo que diminua sua
+     proporcao e ajuste ali dentro" — `object-fit` trocado de `cover` (que
+     cortava topo/base) pra `contain`: a arte inteira encolhe pra caber na
+     altura fixa, sem cortar nada; sobra vazio nas laterais quando a
+     proporção da imagem é mais larga que a do box (mostra o fundo da
+     seção, que já é escuro como a própria arte).
+     Pedido depois: "aumente seu tamanho" — altura subiu de
+     clamp(140px,17vw,260px) pra clamp(180px,22vw,340px). */
+  .secao-banner-img {
+    display: block;
+    width: 100%;
+    height: clamp(180px, 22vw, 340px);
+    object-fit: contain;
+    object-position: center;
+    margin-inline: auto;
+  }
+  .secao-banner-in {
+    height: 100%;
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+    padding: 20px clamp(20px, 6vw, 72px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: var(--sp-2);
+  }
+  .secao-kicker {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  .secao-titulo {
+    font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2.2rem);
+    color: #fff;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .secao-desc {
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 54ch;
+    margin-inline: auto;
+    font-size: clamp(0.9rem, 0.85rem + 0.3vw, 1.05rem);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  .secao-grid {
+    list-style: none;
+    margin: 0;
+    margin-inline: -5vw;
+    padding: 0 5vw 12px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px 16px;
+    overflow: visible;
+  }
+  .secao-grid > li {
+    min-width: 0;
+  }
+  .secao-grid :global(.mini) { inline-size: 100%; }
+
+  /* Mobile: 2 colunas */
+  @media (max-width: 600px) {
+    .secao-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  /* Tablet: 3 colunas */
+  @media (min-width: 601px) and (max-width: 900px) {
+    .secao-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .secao-vazia {
+    margin: 0 0 60px;
     color: var(--texto-fraco);
     font-size: var(--fs-00);
-    margin: var(--sp-3) 0 0;
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .trilha-carrossel { scroll-behavior: smooth; }
+
+  /* Pedido: "deixe fina a linha de separacao das sessoes" — era 4px.
+     Pedido: "aumente o espaco no fim das sessoes de roupas e a linha de
+     termino da sessao" — margem antes da linha de fim (28px → 48px → "de
+     mais espaço" → clamp responsivo, mais folgado em telas largas).
+     Pedido depois: "diminua o tamanho da linha de fim de sessao ... menor
+     e centralizada" — a BASE agora é essa linha de fim (só `.secao-divisor`,
+     sem modificador): largura curta, centralizada. Os modificadores
+     (`--topo`/`--acima`/`--entrada`, as linhas de moldura do banner e a de
+     entrada) reassumem o full-bleed por baixo. */
+  .secao-divisor {
+    height: 1px;
+    border-radius: 999px;
+    background: var(--linha);
+    width: min(320px, 50%);
+    margin-inline: auto;
+    margin-block: clamp(64px, 9vw, 112px) 0;
   }
+  .secao-divisor--topo,
+  .secao-divisor--acima,
+  .secao-divisor--entrada {
+    width: auto;
+    margin-inline: -5vw;
+  }
+  /* Pedido: "a linha de comeco de sessao [abaixo do banner] deixe ela um
+     pouco mais grossa ... faca o banner estar entre linhas paralelas em
+     cima e em baixo" — `--topo` (abaixo do banner) engrossada de 1px pra
+     2px; `--acima` (nova, acima do banner) espelha a mesma espessura, pra
+     as duas ficarem "paralelas" de verdade. */
+  .secao-divisor--topo {
+    height: 2px;
+    margin-block: 0 28px;
+  }
+  /* Pedido: "abaixe mais os banners da linha de cima" — margem embaixo da
+     linha `--acima` foi de 0 pra 28px, empurrando o banner mais pra baixo
+     (mais respiro entre a linha e a arte). */
+  .secao-divisor--acima {
+    height: 2px;
+    margin-block: 28px 28px;
+  }
+  .secao-divisor--entrada {
+    margin-block: 0 40px;
+  }
+
+  /* A entrada do banner (janela que abre) e dos cards (sobem escalonados) agora
+     é do sistema único de movimento: src/lib/motion/revelar.ts (config da Basic
+     em movimento.ts). Sem CSS de "esconder" aqui — nada fica escondido sem JS. */
 </style>

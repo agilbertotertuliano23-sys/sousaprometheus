@@ -2,16 +2,19 @@
 import '../styles/global.css';
 import { NICHO_PADRAO, resolverNicho } from '../data/nichos';
 import TarjaOferta from '../components/TarjaOferta/TarjaOferta.astro';
+import IntroEntrada from '../components/Intro/IntroEntrada.astro';
 
 interface Props {
   titulo?: string;
   descricao?: string;
+  /** toca a intro de entrada (IntroEntrada.astro) — só a home liga */
+  intro?: boolean;
 }
 
 // Build estático: renderiza sempre com o nicho padrão. A troca por ?n= acontece
 // no cliente (src/lib/personalizacao/contexto.ts). Ver ADR-003.
 const nicho = resolverNicho(NICHO_PADRAO);
-const { titulo = nicho.titulo, descricao = nicho.subtitulo } = Astro.props;
+const { titulo = nicho.titulo, descricao = nicho.subtitulo, intro = false } = Astro.props;
 const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? '';
 ---
 <!doctype html>
@@ -26,17 +29,63 @@ const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? '';
     <meta property="og:type" content="website" />
     {siteUrl && <link rel="canonical" href={siteUrl} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Intro de entrada (IntroEntrada.astro): marca `html.intro-on` ANTES da 1ª
+         pintura pra Hero/menu já nascerem escondidos e o overlay cobrir a tela.
+         Pula com movimento reduzido ou link com #âncora. -->
+    {intro && (
+      <script is:inline>
+        try {
+          if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !location.hash) {
+            document.documentElement.classList.add('intro-on');
+          }
+        } catch (e) {}
+      </script>
+    )}
+    <!-- Tipografia por seção da Hero (título + texto auxiliar overlay no
+         banner, ver Hero.astro `FONTES_POR_SECAO`): Streetwear = Permanent
+         Marker + Space Grotesk (pedido: fonte "Blacklisted", brush/street,
+         não está no Google Fonts — uso comercial pede licença paga do
+         dafont/Pizzadude; substituída pela alternativa mais próxima já
+         usada neste projeto antes); Old Money = Bodoni Moda + Montserrat;
+         Y2K = Audiowide + Space Grotesk; Minimal = Cormorant Garamond +
+         Manrope; Gym = Bebas Neue + Manrope. -->
+    <!-- Skin "sufgang" (ref. sufgang.com.br): Jost (títulos/rótulos) + Archivo
+         (corpo) — ver --f-display/--f-corpo em tokens.css. As fontes por
+         categoria da Hero antiga (Audiowide, Bodoni, Cormorant, Permanent
+         Marker) saíram junto com ela (components/_arquivo/Hero/). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Rubik/Manrope/JetBrains Mono: par de tipografia global pra títulos/
+         textos (--f-display/--f-corpo/--f-mono em tokens.css), pesquisado e
+         escolhido pra fora da Hero/FlowingMenu (que mantêm suas fontes por
+         categoria acima). Corrige de quebra o bug encontrado na auditoria
+         AIOX: Archivo/JetBrains Mono estavam declaradas nos tokens mas
+         nunca eram carregadas aqui — caíam sempre no fallback do sistema. -->
+    <!-- Não bloqueia a renderização: `media="print"` + onload troca pra `all`
+         quando o CSS chega (display=swap já cobre o FOUT). Bodoni sem eixo
+         itálico — nada no projeto usa itálico nessa família. -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&family=Jost:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&family=Jost:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   </head>
   <body>
+    {intro && <IntroEntrada />}
     <TarjaOferta />
     <slot />
     <script>
       import { aplicarPersonalizacao } from '../lib/personalizacao/contexto';
       import { ligarNavegacaoTelas } from '../lib/navegacao/telas';
       import { ligarVideoVertical } from '../lib/midia/video-vertical';
+      import { ligarRevelacaoSecoes } from '../lib/motion/revelar-secoes';
+      import { ligarProximaSecao } from '../lib/motion/proxima-secao';
+      import { ligarIntroEntrada } from '../lib/motion/intro-entrada';
+      import { ligarRolagem } from '../lib/motion/rolagem';
+      ligarIntroEntrada();
+      ligarRolagem();
       aplicarPersonalizacao();
       ligarNavegacaoTelas();
       ligarVideoVertical();
+      ligarRevelacaoSecoes();
+      ligarProximaSecao();
     </script>
   </body>
 </html>

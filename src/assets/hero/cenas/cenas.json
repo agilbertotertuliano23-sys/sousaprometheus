@@ -1,0 +1,77 @@
+{
+  "streetwear": {
+    "fundo": {
+      "w": 2752,
+      "h": 1536
+    },
+    "modelo": {
+      "w": 1678,
+      "h": 937
+    },
+    "letreiro": {
+      "w": 1678,
+      "h": 937,
+      "quadroCheio": true
+    }
+  },
+  "gym": {
+    "fundo": {
+      "w": 2752,
+      "h": 1536
+    },
+    "modelo": {
+      "w": 1678,
+      "h": 937
+    },
+    "letreiro": {
+      "w": 1678,
+      "h": 937,
+      "quadroCheio": true
+    }
+  },
+  "y2k": {
+    "fundo": {
+      "w": 2752,
+      "h": 1536
+    },
+    "modelo": {
+      "w": 1678,
+      "h": 937
+    },
+    "letreiro": {
+      "w": 1678,
+      "h": 937,
+      "quadroCheio": true
+    }
+  },
+  "old-money": {
+    "fundo": {
+      "w": 2752,
+      "h": 1536
+    },
+    "modelo": {
+      "w": 1678,
+      "h": 937
+    },
+    "letreiro": {
+      "w": 2170,
+      "h": 725,
+      "quadroCheio": false
+    }
+  },
+  "minimal": {
+    "fundo": {
+      "w": 2752,
+      "h": 1536
+    },
+    "modelo": {
+      "w": 1678,
+      "h": 937
+    },
+    "letreiro": {
+      "w": 2170,
+      "h": 725,
+      "quadroCheio": false
+    }
+  }
+}

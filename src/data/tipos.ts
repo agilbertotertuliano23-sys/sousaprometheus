@@ -43,6 +43,15 @@ export interface Categoria {
   descricao?: string;
   /** menor = mais cedo na trilha. Default: ordem de declaração no array. */
   ordem?: number;
+  /** Cor de acento própria da categoria (hex). Usada pelo carrossel da Hero
+   * pra recolorir --acento (banner, CTA, cards) ao navegar entre categorias.
+   * Sem valor → cai no `nicho.acento` padrão. */
+  cor?: string;
+  /** Skin visual do card do carrossel da Hero pra esta categoria.
+   * 'padrao' (ou ausente) = textura celofane; 'scanner' = frame Uiverse
+   * Spacious74 (raio + ponto animado + linhas-guia); 'glass' = card
+   * translúcido Uiverse SteveBloX (glassmorphism claro). */
+  cardEstilo?: 'padrao' | 'scanner' | 'glass';
 }
 
 // ── Blocos de apresentação — union discriminada por `tipo` ──────
@@ -146,6 +155,11 @@ export interface Produto {
 
   /** id de uma Categoria do nicho. Ausente/inválido → categoria "_outros". */
   categoria?: string;
+  /** id de uma SUBCATEGORIA (taxonomia fixa, ver `SUBCATEGORIAS` em
+   *  `lib/catalogo/resolver.ts`: camisas/shorts/calcas/tenis/kits/itens).
+   *  Compartilhada entre TODOS os nichos (não é curada por nicho como
+   *  `Categoria`). Ausente → cai em "itens" (catch-all) na grade. */
+  subcategoria?: string;
   /** 0..100, default 50. Score curado: ordena na categoria + elege herói. */
   prioridade?: number;
   /** galeria rica. Ausente → derivada de [imagem, (video)]. */

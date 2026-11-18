@@ -1,0 +1,234 @@
+---
+/**
+ * SecaoIndice — 1ª seção depois da Hero (estrutura da referência HAUS Studio,
+ * design-systems/hero-poster-haus/reference-secoes-haus.jpg): painel CLARO com
+ * respiro preto em volta, wordmark de duas palavras esticado na largura,
+ * legendas pequenas e bloco "Sobre" no canto. Wireframe: `### SECAO 1` em
+ * design-systems/hero-poster-haus/wireframe.txt.
+ *
+ * Skin "sufgang": papel branco, cantos retos, títulos em Jost caixa alta.
+ * No lugar da moldura de foto vazia (o antigo <Slot>), os 3 vídeos de
+ * apresentação do personagem cartoon da Sousayl LADO A LADO (um por look),
+ * de public/cards-duplos/ (os mesmos do bloco CardsDuplos, arquivado). Fundo
+ * branco dos vídeos = papel da seção, então o recorte 4:5 some na página.
+ * Celular: a fileira vira trilho com rolagem lateral (scroll-snap).
+ *
+ * Vídeos: mudos, em loop, só tocam visíveis na tela; com movimento reduzido
+ * ficam parados no pôster. O CTA usa o gancho da Hero (`data-ir="vitrine"`
+ * → #tela-vitrine); sem JS é um link de âncora normal.
+ */
+const LOOKS = [
+  { src: '/cards-duplos/personagem-parado', rotulo: 'Look 01', legenda: 'Short + polo' },
+  { src: '/cards-duplos/personagem-bolsos-v1', rotulo: 'Look 02', legenda: 'Jeans claro' },
+  { src: '/cards-duplos/personagem-bolsos-v2', rotulo: 'Look 03', legenda: 'Jeans cinza' },
+];
+---
+<section class="hx-indice" aria-labelledby="hx-indice-titulo">
+  <h2 class="hx-marca" id="hx-indice-titulo">
+    <span>SOUSAYL<sup>®</sup></span>
+    <span>CATÁLOGO</span>
+  </h2>
+
+  <ul class="hx-looks" aria-label="Apresentação do personagem Sousayl">
+    {LOOKS.map((look) => (
+      <li class="hx-look">
+        <div class="hx-look-video">
+          <video
+            src={`${look.src}.mp4`}
+            poster={`${look.src}.jpg`}
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label={`Personagem Sousayl — ${look.legenda}`}
+            data-hx-video
+          ></video>
+        </div>
+        <p class="hx-look-legenda"><span>{look.rotulo}</span><span>{look.legenda}</span></p>
+      </li>
+    ))}
+  </ul>
+
+  <div class="hx-corpo">
+    <div class="hx-esq">
+      <p class="hx-mono hx-lema">Isto é um espaço<br />de descoberta</p>
+
+      <div class="hx-meio">
+        <p class="hx-linha hx-mono"><span>Índice</span><span>01 / 03</span></p>
+        <p class="hx-texto">
+          Produtos que fazem sentido, preços que valem a pena, uma curadoria em
+          constante movimento. Sem estação, sem regra: só forma, material e presença.
+        </p>
+      </div>
+
+      <a class="hx-cta" href="#tela-vitrine" data-ir="vitrine">[ Explorar catálogo ]</a>
+    </div>
+
+    <div class="hx-dir">
+      <p class="hx-mono hx-sobre">Sobre</p>
+      <p class="hx-texto">
+        Descubra. Escolha. Aproveite. A Sousayl reúne nichos de moda em um
+        catálogo único, pensado para quem chega pelo TikTok e quer ver rápido.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Toca cada vídeo só enquanto aparece na tela (economiza bateria/dados no
+  // celular); com movimento reduzido nunca toca — fica no pôster.
+  const videos = document.querySelectorAll<HTMLVideoElement>('[data-hx-video]');
+  if (videos.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const io = new IntersectionObserver((entradas) => {
+      entradas.forEach(({ target, isIntersecting }) => {
+        const v = target as HTMLVideoElement;
+        if (isIntersecting) v.play().catch(() => {});
+        else v.pause();
+      });
+    }, { threshold: 0.25 });
+    videos.forEach((v) => io.observe(v));
+  }
+</script>
+
+<style>
+  .hx-indice {
+    --pad: clamp(10px, 3vw, 32px);
+    --hx-papel: #ffffff;
+    --hx-tinta: #000000;
+    width: calc(100vw - 2 * var(--pad));
+    margin: var(--pad) calc(50% - 50vw + var(--pad));
+    padding: clamp(14px, 2.2vw, 34px);
+    background: var(--hx-papel);
+    color: var(--hx-tinta);
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+  }
+
+  /* wordmark: duas palavras esticadas de ponta a ponta */
+  .hx-marca {
+    display: flex;
+    justify-content: space-between;
+    gap: 2vw;
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 500;
+    font-size: clamp(30px, 8.4vw, 150px);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .hx-marca sup { font-size: 0.32em; vertical-align: 1.05em; margin-left: 0.04em; }
+
+  .hx-corpo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(20px, 4vw, 40px);
+    margin-top: clamp(20px, 3.4vw, 54px);
+  }
+
+  .hx-mono {
+    margin: 0;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.66rem, 0.6rem + 0.25vw, 0.8rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    line-height: 1.25;
+  }
+  .hx-texto {
+    margin: 0;
+    max-width: 44ch;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.78rem, 0.72rem + 0.3vw, 0.95rem);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .hx-linha { display: flex; justify-content: space-between; max-width: 44ch; margin-bottom: 10px; }
+
+  .hx-esq { display: flex; flex-direction: column; justify-content: space-between; gap: 22px; }
+  .hx-meio { display: flex; flex-direction: column; gap: 4px; }
+
+  .hx-cta {
+    align-self: flex-start;
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding-block: 6px;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.72rem, 0.66rem + 0.3vw, 0.9rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.18s ease, letter-spacing 0.18s ease;
+  }
+  .hx-cta:hover, .hx-cta:focus-visible { border-bottom-color: currentColor; letter-spacing: 0.1em; }
+  .hx-cta:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+
+  .hx-dir { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ---- vídeos do personagem, lado a lado ---- */
+  .hx-looks {
+    list-style: none;
+    margin: clamp(20px, 3.4vw, 54px) 0 0;
+    padding: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 72%;
+    gap: clamp(8px, 1.2vw, 16px);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .hx-looks::-webkit-scrollbar { display: none; }
+  .hx-look { scroll-snap-align: start; display: flex; flex-direction: column; gap: 10px; }
+  .hx-look-video {
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: var(--hx-papel);
+  }
+  .hx-look-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+  .hx-look-legenda {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid color-mix(in srgb, var(--hx-tinta) 14%, transparent);
+    font-family: var(--f-display);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .hx-look-legenda span:last-child { color: color-mix(in srgb, var(--hx-tinta) 55%, transparent); }
+
+  @media (min-width: 900px) {
+    .hx-corpo {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: clamp(18px, 3vw, 48px);
+      align-items: stretch;
+    }
+    .hx-dir { align-self: end; justify-self: end; max-width: 30ch; }
+    .hx-dir .hx-texto { max-width: 30ch; }
+  }
+  /* a partir de tablet os 3 cabem lado a lado, sem rolagem */
+  @media (min-width: 700px) {
+    .hx-looks {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      overflow: visible;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hx-cta { transition: none; }
+  }
+</style>

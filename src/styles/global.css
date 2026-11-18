@@ -1,20 +1,64 @@
 @import './tokens.css';
+/* @tailwindcss/vite já estava registrado em astro.config.ts, mas sem este
+   import nenhuma classe utilitária Tailwind gerava CSS — necessário pro
+   PillNav.tsx (rounded-full, flex, hidden md:flex, top-[1em] etc.). */
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Koobang';
+  src: url('../assets/fonts/koobang/Koobang-lxrm0.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Darksite';
+  src: url('../assets/fonts/darksite/Darksite-V4Bmy.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bigerside';
+  src: url('../assets/fonts/bigerside/BigersideExpanded-7O9Z4.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* âncoras não somem atrás do cabeçalho fixo (Cabecalho.astro, 56px) */
+  scroll-padding-top: 56px;
+}
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* Fundo sempre preto (--bg = #000000). Não há mais tingimento por seção. */
+  background-color: var(--bg);
   color: var(--texto);
   font-family: var(--f-corpo);
   font-size: var(--fs-0);
   line-height: var(--lh-normal);
   -webkit-font-smoothing: antialiased;
+  /* full-bleed da Hero usa width:100vw — no desktop 100vw inclui a barra de
+     rolagem e sobra alguns px à direita. `clip` contém sem virar scroll-container. */
+  overflow-x: clip;
 }
 
-h1, h2, h3 { font-family: var(--f-display); line-height: var(--lh-tight); margin: 0; }
+/* Skin "sufgang": títulos em caixa alta, peso médio, tracking leve. */
+h1, h2, h3 {
+  font-family: var(--f-display);
+  font-weight: 500;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-titulo);
+  text-transform: uppercase;
+  margin: 0;
+}
 
 a { color: inherit; text-decoration: none; }
 
@@ -27,7 +71,7 @@ img, video { max-width: 100%; display: block; }
 }
 
 .rotulo {
-  font-family: var(--f-mono);
+  font-family: var(--f-display);
   font-size: var(--fs-00);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
@@ -57,3 +101,51 @@ html.js #app[data-tela='detalhe'] #tela-detalhe { display: block; }
 /* Dentro do detalhe, só o <article> marcado `.ativo` por telas.ts. */
 html.js #tela-detalhe > article[data-sku] { display: none; }
 html.js #tela-detalhe > article[data-sku].ativo { display: block; }
+
+/* Transição entre telas (porta ↔ catálogo ↔ detalhe) via View Transitions API —
+   telas.ts só a aciona quando `document.startViewTransition` existe e o usuário
+   não pediu menos movimento. A tela que sai recua e some; a que entra sobe e
+   assenta. Sem suporte, a troca é a mesma de sempre (instantânea). */
+@media (prefers-reduced-motion: no-preference) {
+  /* Configuração da Basic (--mov-*, tokens.css): a tela que entra ABRE de baixo pra
+     cima (janela, como as imagens da intro) por cima da que sai, que recua e
+     escurece. Mesma curva e 1 s. */
+  ::view-transition-old(root) {
+    animation: vt-sai var(--mov-tempo) var(--mov-ease) both;
+  }
+  ::view-transition-new(root) {
+    animation: vt-entra var(--mov-tempo) var(--mov-ease) both;
+  }
+}
+@keyframes vt-sai {
+  to { opacity: 0.35; transform: translateY(-6vh) scale(0.985); }
+}
+@keyframes vt-entra {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+/* Títulos em máscara (src/lib/motion/revelar.ts divide o texto nestes spans):
+   cada letra/palavra vive numa janela com overflow oculto e sobe de dentro dela.
+   Folga vertical/horizontal pra não cortar acentos, cedilhas e letras largas. */
+.mov-m {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0.12em 0.04em;
+  margin: -0.12em -0.04em;
+}
+.mov-u { display: inline-block; }
+.mov-p { display: inline-block; white-space: nowrap; }
+
+/* ===== Cards "editorial minimalista" (MiniProduto, cards da Hero, cards de
+   vídeo): sem caixa, sem sombra/blur, cantos retos, fio fino no lugar de
+   borda, rótulos pequenos em caixa alta com tracking largo. A cor da
+   categoria (--acento) aparece só num ponto e no sublinhado do hover. ===== */
+:root {
+  --ed-linha: color-mix(in srgb, #fff 24%, transparent);
+  --ed-linha-forte: color-mix(in srgb, #fff 62%, transparent);
+  --ed-rotulo-fonte: var(--f-display);
+  --ed-tracking: 0.14em;
+  --ed-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

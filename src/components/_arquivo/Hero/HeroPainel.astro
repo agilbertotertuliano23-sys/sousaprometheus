@@ -1,0 +1,741 @@
+﻿---
+/**
+ * Hero — reconstruído ao modelo do mockup `main_inicial` (wireframe 3):
+ * painel em --acento, 2 colunas (texto à esquerda + pilha de cards à
+ * direita: card-main vertical + carrossel de cards menores + dots). Formato
+ * do painel: passou por várias versões de `clip-path` customizado (chanfros,
+ * entalhe pro card, dip na borda superior-direita) e foi simplificado de
+ * volta pra um retângulo com cantos arredondados normais (pedido: "arredonde
+ * a hero normalmente") — `border-radius` direto em `.hero`, sem SVG
+ * `<clipPath>` nenhum. Inset dentro de `.hero-outer` com respiro ao redor —
+ * não é full-bleed borda-a-borda.
+ *
+ * Fica FORA de `#app` (não participa de `telas.ts`). Conteúdo derivado do
+ * nicho + capas dos primeiros produtos, exceto o fundo (ver abaixo —
+ * asset fixo, não por nicho).
+ *
+ * Fundo: cada estado (padrão "Streetwear" + Old Money/Minimal/Gym/Y2K) é um
+ * banner PRONTO (modelo + cenário + título já compostos numa única imagem
+ * pelo usuário) — src/assets/hero/, importados com `?url` (mesmo padrão de
+ * `carregar.ts`). Existiu uma foto recortada flutuante separada
+ * (`.hero-modelos`, fora do `<header class="hero">`) pro estado padrão;
+ * removida quando o "Streetwear" também virou banner pronto (pedido:
+ * "retirando a imagem fora da hero").
+ *
+ * (Um wordmark "STREETWEAR" em Permanent Marker chegou a existir abaixo do
+ * carrossel — pedido pra apagar; removido de novo.)
+ *
+ * 3 elementos flutuam sobre o painel, desktop-only (mobile só mostra o
+ * central — ver `HeroCarrosselCard.astro` pro visual/mecânica dos cards):
+ *  - `.hero-media-texto`: onde o card único original ficava (esquerda,
+ *    centralizado verticalmente).
+ *  - `.hero-media-carrossel`: card do carrossel no canto inferior-direito
+ *    (`<HeroCarrosselCard driver={false}>`) — navegável, mas não recolore
+ *    mais a página.
+ *  - `.hero-media-central`: duplicata do card acima, centralizada
+ *    (`<HeroCarrosselCard driver={true}>`, pedido: "duplique o modelo da
+ *    parte inferior direita e ajuste ele ao centro") — é quem recolore
+ *    --acento/troca o fundo da hero/wordmark ao navegar (pedido: "configure
+ *    so ele para mudar as sessoes ... deixe o do centro ativo") e troca
+ *    "Ver item" por "Abrir catálogo".
+ *
+ * Setas do carrossel: `<script>` do componente sincroniza, por card
+ * (`.hero-carrossel-wrap`, existem 2 agora, uma por instância): (1) rola a
+ * trilha até a miniatura, (2) atualiza o dot ativo, (3) atualiza o rótulo +
+ * "Ver item" locais ao card, (4) SÓ pro driver — recolore --acento/troca o
+ * fundo da hero/wordmark. Progressive enhancement: as setas ficam ocultas
+ * até `html.js` (mesmo gate de `telas.ts`) — sem JS, some só a seta; o
+ * scroll por arraste/touch no carrossel continua liso.
+ */
+import type { Categoria, Nicho } from '../../../data/tipos';
+import { resolverCategorias } from '../../../lib/catalogo/resolver';
+import HeroCarrosselCard from './HeroCarrosselCard.astro';
+import ExpositorCard from './ExpositorCard.astro';
+import HeroCamadas from './HeroCamadas.astro';
+import NavBanner from '../NavBanner/NavBanner.astro';
+import PixelFundoHero from '../Efeitos/PixelFundoHero';
+// Fundo padrão ("Streetwear") — banner PRONTO (modelo + cenário + título já
+// compostos numa única imagem pelo usuário), mesmo formato dos temas por
+// categoria abaixo. Substituiu a foto de referência + o recorte separado
+// (`modelos-streetwear.png`, removido — pedido: "retirando a imagem fora
+// da hero", a antiga `.hero-modelos` que ficava fora do `<header>`).
+import heroFundoUrl from '../../../assets/hero/streetwear-banner.jpg?url';
+// Textura do card do carrossel (desktop): celofane/folha iridescente
+// amassada, mesmo processo (Higgsfield remove_background + trim via sharp)
+// a partir da foto de referência do usuário — asset fixo, não por produto.
+import cardCelofaneUrl from '../../../assets/hero/card-celofane.png?url';
+
+// Temas por categoria ("Old Money", "Minimal", "Gym", "Y2K") — cada um é um
+// banner PRONTO (modelo + fundo + título + legendas já compostos numa única
+// imagem pelo usuário), mesmo formato do fundo padrão acima.
+import oldMoneyFundoUrl from '../../../assets/hero/old-money-banner.jpg?url';
+import minimalFundoUrl from '../../../assets/hero/minimal-banner.jpg?url';
+import gymFundoUrl from '../../../assets/hero/gym-banner.jpg?url';
+import y2kFundoUrl from '../../../assets/hero/y2k-banner.jpg?url';
+
+// Ícones dentro do círculo do card central (pedido: "pegue os logoss
+// destas imagens e adeque as sessoes a dentro do circulo do carrosel") —
+// recortados da folha de logos que o usuário mandou, fundo preto trocado
+// por transparência (canal alfa = luminância, via sharp) pra encaixar em
+// qualquer cor de fundo do círculo. "Minimal" não tem símbolo próprio na
+// folha (só o wordmark entre 2 linhas) — vira uma linha desenhada em CSS
+// no lugar de um ícone (ver `HeroCarrosselCard.astro`).
+import iconeGloboUrl from '../../../assets/hero/icones/streetwear-globo.png?url';
+import iconeCoroaUrl from '../../../assets/hero/icones/old-money-coroa.png?url';
+import iconeSaturnoUrl from '../../../assets/hero/icones/y2k-saturno.png?url';
+// Halter do Gym — recortado à parte (imagem própria, fundo já transparente
+// de fábrica, diferente da folha preta dos outros 3) — pedido: "ajuste
+// este simbolo em gym, desejo que pegue apenas a logo".
+import iconeHalterUrl from '../../../assets/hero/icones/gym-halter.png?url';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+const kicker = `PROMETEUS · ${nicho.nome.toUpperCase()}`;
+
+// Carrossel da Hero — virou navegador de CATEGORIAS (não mais fotos de
+// produto): cada card representa uma categoria do nicho, com cor própria
+// (`cat.cor`, fallback `nicho.acento`), e ao navegar troca --acento +
+// rola até a seção daquela categoria (`#cat-<id>`, mesma âncora usada por
+// SecaoUnica.astro/GradeCatalogo — id sempre existe, resolverCategorias
+// nunca devolve entrada sem id). Pedido: "ao passar o card... altere a
+// coleção, alterando banner, hero, card do carrossel e as cores".
+//
+// Trilha fixa de 5 (pedido: "quero apenas as 5 sessoes, streetwear, gym,
+// y2k, old money, minimal"). `id` = a categoria REAL 'streetwear' (existe em
+// `GradeCatalogo`/`#cat-streetwear` com produto de verdade) — não mais o
+// `basicos` de um esquema antigo (Básicos/Destaques/Kits), que não bate com
+// nenhuma seção real neste modelo de 5 categorias e quebrava o filtro do
+// catálogo por categoria (pedido: "cada catalogo abra o seu respectivo").
+// `rotulo`/`cor` continuam fixos (não os da categoria) — este 1º card é o
+// estado PADRÃO da Hero, usa a identidade do nicho, não a de "streetwear"
+// especificamente.
+const categoriasHero = resolverCategorias(nicho, 'a');
+const porId = new Map(categoriasHero.map((cat) => [cat.id, cat] as const));
+const streetwearCard: Categoria = {
+  id: porId.get('streetwear')?.id ?? 'streetwear',
+  rotulo: 'Streetwear',
+  cor: nicho.acento,
+};
+const menores: Categoria[] = [
+  streetwearCard,
+  ...(['gym', 'y2k', 'old-money', 'minimal'] as const)
+    .map((id) => porId.get(id))
+    .filter((cat): cat is Categoria => Boolean(cat)),
+];
+const dots = Math.max(menores.length, 4);
+
+// Categorias com tema próprio de Hero (fundo já pronto, sem recorte) —
+// "old-money", "minimal", "gym" e "y2k"; as demais (fixture:
+// destaques/básicos/kits) não mexem no fundo/imagem da Hero ao serem
+// selecionadas, continuam no padrão "Streetwear" (fundo + recorte fixos).
+// `icone`: logo do slide no card central — só quem tem PNG próprio
+// (old-money/y2k/gym) declara; "minimal" e as sem-tema caem no default do
+// componente (globo/linha, ver `HeroCarrosselCard.astro`).
+const temaPorCategoria: Record<string, { fundo: string; icone?: string }> = {
+  'old-money': { fundo: oldMoneyFundoUrl, icone: iconeCoroaUrl },
+  minimal: { fundo: minimalFundoUrl },
+  gym: { fundo: gymFundoUrl, icone: iconeHalterUrl },
+  y2k: { fundo: y2kFundoUrl, icone: iconeSaturnoUrl },
+};
+
+// Tipografia do overlay de título (pedido: "Aplicar tipografia específica
+// para cada nicho") — chaveada por `rotulo` (não por `id`) porque o card
+// "Streetwear" da trilha reaproveita o id `basicos` (pra âncora/scroll
+// continuar indo pra uma seção real; ver `menores` acima), então `id` não
+// serve de chave única aqui. Substitui o antigo `Categoria.fonteTitulo`
+// (removido — só cobria título, não o texto auxiliar, e só 2 categorias).
+// Fonte do título da Hero para Streetwear customizada com a fonte Bigerside Expanded
+const FONTES_POR_SECAO: Record<string, { titulo: string; texto: string }> = {
+  Streetwear: { titulo: "'Bigerside', sans-serif", texto: "'Space Grotesk', sans-serif" },
+  Gym: { titulo: "'Bebas Neue', sans-serif", texto: "'Manrope', sans-serif" },
+  Y2K: { titulo: "'Audiowide', sans-serif", texto: "'Space Grotesk', sans-serif" },
+  'Old Money': { titulo: "'Bodoni Moda', serif", texto: "'Montserrat', sans-serif" },
+  Minimal: { titulo: "'Cormorant Garamond', serif", texto: "'Manrope', sans-serif" },
+};
+const fontesStreetwear = FONTES_POR_SECAO.Streetwear;
+---
+<div class="hero-outer">
+<NavBanner categorias={categoriasHero} />
+<!-- Borda giratória (pedido: "ajuste este efeito nas bordas da hero" — técnica
+     Uiverse de glow: 3 camadas desfocadas + filtro SVG que amplifica o alfa do
+     gradiente, girando atrás de um anel fino revelado pelo padding de
+     `.hero-glow`). Cor 100% derivada de `--acento` (mesmas `--_g1/_g2/_g3` de
+     MiniProduto.astro) — já troca sozinha quando o carrossel muda de
+     categoria, então o glow "varia com a cor de cada nicho" sem lógica nova. -->
+<svg class="hero-glow-defs" aria-hidden="true" focusable="false">
+  <filter id="hero-glow-unopaq" y="-100%" height="300%" x="-100%" width="300%">
+    <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 0"></feColorMatrix>
+  </filter>
+  <filter id="hero-glow-unopaq2" y="-100%" height="300%" x="-100%" width="300%">
+    <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 10 0"></feColorMatrix>
+  </filter>
+  <filter id="hero-glow-unopaq3" y="-100%" height="300%" x="-100%" width="300%">
+    <feColorMatrix values="1 0 0 1 0  0 1 0 1 0  0 0 1 1 0  0 0 0 2 0"></feColorMatrix>
+  </filter>
+</svg>
+<div class="hero-glow">
+  <div class="hero-glow-layer hero-glow-blur" aria-hidden="true"></div>
+  <div class="hero-glow-layer hero-glow-intense" aria-hidden="true"></div>
+  <div class="hero-glow-border">
+    <div class="hero-glow-layer hero-glow-inside" aria-hidden="true"></div>
+  </div>
+  <header class="hero hero--poster" style={`--hero-fundo-url:url(${heroFundoUrl})`} data-hero-fundo-padrao={heroFundoUrl}>
+  <HeroCamadas />
+  <PixelFundoHero client:idle />
+  <div class="hero-in">
+    <div class="hero-texto">
+      <p class="rotulo hero-kicker">{kicker}</p>
+      <h2 class="hero-titulo">{nicho.titulo}</h2>
+      <p class="hero-sub">{nicho.subtitulo}</p>
+      <p class="hero-meta rotulo">
+        {nicho.produtos.length} produtos · {(nicho.categorias?.length ?? 1)} categorias
+      </p>
+      <a class="hero-cta" href="#tela-vitrine" data-ir="vitrine">Ver catálogo ›</a>
+    </div>
+  </div>
+
+  <!-- Voltou pra DENTRO do `<header>` (pedido: "retorne o card para dentro
+       da hero novamente") — não precisa mais escapar do `overflow:hidden`/
+       `clip-path`, porque o recorte agora é um retângulo simples (só o
+       chanfro no canto superior-esquerdo) sem vão pra ocupar.
+
+       `.hero-media-texto` DEIXOU DE SER CARD (pedido: "Exclua completamente
+       o card existente com texto centralizado à esquerda, removendo também
+       bordas, sombras, fundos e quaisquer elementos residuais") — os MESMOS
+       3 textos que já existiam (wordmark + título + subtítulo do nicho,
+       nenhuma copy nova) agora ficam soltos, direto sobre o banner, no
+       canto superior-esquerdo. Fonte inicial = Streetwear (1º item de
+       `menores`); troca por seção via `data-hero-fonte-titulo`/`-texto`
+       no script abaixo.
+
+       Os outros 2 elementos continuam:
+       - `.hero-media-carrossel`: card do carrossel no canto
+         inferior-direito (`HeroCarrosselCard`, `driver=false`) — navegável
+         (troca miniatura/rótulo/"Ver item"), mas não recolore mais a
+         página.
+       - `.hero-media-central`: duplicata do card acima, centralizada
+         (pedido: "faca outro card ao centro da hera, duplique o modelo da
+         parte inferior direita e ajuste ele ao centro") — esta é quem
+         recolore --acento/troca o fundo da hero/wordmark/fontes ao
+         navegar (pedido: "configure so ele para mudar as sessoes ...
+         deixe o do centro ativo") e troca "Ver item" por "Abrir
+         catálogo". -->
+  <div class="hero-media-texto">
+    <p class="hero-wordmark" style={`font-family:${fontesStreetwear.titulo}`}>Streetwear</p>
+    <h3 class="hero-card-titulo" style={`font-family:${fontesStreetwear.texto}`}>{nicho.titulo}</h3>
+    <p class="hero-card-sub" style={`font-family:${fontesStreetwear.texto}`}>{nicho.subtitulo}</p>
+  </div>
+
+  <div class="hero-media-carrossel">
+    <ExpositorCard />
+  </div>
+
+  <div class="hero-media-central">
+    <HeroCarrosselCard
+      menores={menores}
+      temaPorCategoria={temaPorCategoria}
+      cardCelofaneUrl={cardCelofaneUrl}
+      iconeGloboUrl={iconeGloboUrl}
+      fontesPorSecao={FONTES_POR_SECAO}
+      nichoAcento={nicho.acento}
+      dots={dots}
+      driver={true}
+    />
+  </div>
+</header>
+</div>
+</div>
+
+<script>
+  // Setas do carrossel — cada clique avança um índice e sincroniza: (1) a
+  // miniatura visível no `.hero-carrossel`, (2) o dot ativo, (3) --acento
+  // (cor da categoria do card atual) e (4) rola a página até a seção dessa
+  // categoria (#cat-<id>). Sem dependência de telas.ts; roda isolado, uma
+  // vez por carrossel.
+  //
+  // FIX: antes o índice tinha uma "posição de descanso" fantasma (0 = antes
+  // do 1º card, mesmo scrollLeft que o card 1), então o 1º clique em
+  // "próximo" não mudava nada visível — o 1º e o 2º "card" pareciam ser a
+  // mesma coisa. Removido: índice agora mapeia direto pros cards reais.
+  // Existem agora 2 carrosséis independentes (`HeroCarrosselCard`, canto +
+  // centro — pedido: "duplique o modelo da parte inferior direita e
+  // ajuste ele ao centro") — cada `.hero-carrossel-wrap` carrega
+  // `data-hero-driver`: só o do CENTRO tem `"true"` (pedido: "configure so
+  // ele para mudar as sessoes ... deixe o do centro ativo"). O outro
+  // continua navegável (troca miniatura + rótulo + "Ver item", tudo local
+  // a ele), só não recolore mais --acento/troca o fundo da hero/wordmark.
+  document.querySelectorAll('.hero-carrossel-wrap').forEach((wrap) => {
+    const trilha = wrap.querySelector('.hero-carrossel');
+    const media = wrap.closest('.uiv-card');
+    if (!trilha || !media) return;
+
+    const total = Number((wrap as HTMLElement).dataset.total || 0);
+    if (total < 2) return;
+
+    const isDriver = (wrap as HTMLElement).dataset.heroDriver === 'true';
+    const dots = media.querySelectorAll('.hero-dots span');
+    // Rótulo dentro do próprio card (`.uiv-label`) e "Ver item" — sempre
+    // locais a `media`, existem em cada instância independentemente.
+    const label = media.querySelector('.uiv-label');
+    const itemBtn = media.querySelector('[data-hero-ver-item]');
+    // "Abrir catálogo" — só existe no card driver; local a `media` igual
+    // aos dois acima (resolvido aqui, fora de `sincronizar()`, pra TS
+    // manter o narrowing de `media` sem precisar checá-lo de novo lá dentro).
+    const cta = media.querySelector('.hero-card-cta');
+    // Wordmark + textos auxiliares moram no OUTRO elemento (overlay de
+    // título, ex-`.hero-media-texto`) — busca global, só tocada quando
+    // `isDriver`.
+    const wordmark = document.querySelector('.hero-wordmark');
+    const tituloAux = document.querySelector('.hero-card-titulo');
+    const subAux = document.querySelector('.hero-card-sub');
+    const wordmarkTextoPadrao = wordmark?.textContent ?? 'Streetwear';
+    const wordmarkFontePadrao = wordmark ? getComputedStyle(wordmark).fontFamily : '';
+    const auxFontePadrao = tituloAux ? getComputedStyle(tituloAux).fontFamily : '';
+    let indice = 0;
+
+    function sincronizar() {
+      if (!trilha) return;
+      const item = trilha.children[indice];
+      if (item) item.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+
+      dots.forEach((d, i) => {
+        d.classList.toggle('ativa', dots.length > 0 && i === indice % dots.length);
+      });
+
+      const link = item?.querySelector('[data-categoria]');
+      if (!link) return;
+
+      // Rótulo do card ativo, dentro do próprio `.uiv-detail` — local,
+      // roda nas 2 instâncias.
+      if (label) label.textContent = link.querySelector('.hero-card-rotulo')?.textContent ?? '';
+
+      // "Ver item" só existe no card não-driver — aponta pro card ativo do
+      // seu próprio carrossel (mesma âncora `#cat-<id>` do card).
+      const hrefAlvo = link.getAttribute('href');
+      if (itemBtn && hrefAlvo) itemBtn.setAttribute('href', hrefAlvo);
+
+      // Efeitos GLOBAIS (recolorir seções, trocar fundo da hero, trocar o
+      // wordmark grande) só a partir daqui pro carrossel DRIVER (centro).
+      if (!isDriver) return;
+
+      const cor = getComputedStyle(link).getPropertyValue('--cat-cor').trim();
+      if (cor) document.documentElement.style.setProperty('--acento', cor);
+
+      // Old Money / Minimal / Gym / Y2K têm tema próprio (fundo já pronto,
+      // banner único); as demais categorias (fixture) não têm
+      // `data-hero-fundo` — nesse caso volta pro padrão ("Streetwear",
+      // também um banner pronto — `data-hero-fundo-padrao`, gravado uma vez
+      // no elemento pelo Astro).
+      const heroEl = document.querySelector('.hero') as HTMLElement | null;
+      const fundoAlvo = link.getAttribute('data-hero-fundo') || heroEl?.dataset.heroFundoPadrao;
+
+      if (heroEl && fundoAlvo) {
+        // `background-image`/custom properties não interpolam entre
+        // url() diferentes — CSS não crossfada isso (ao contrário da
+        // --acento tipada em @property); troca é seca aqui, sem
+        // transition (declarar uma seria só cosmético/enganoso).
+        heroEl.style.setProperty('--hero-fundo-url', `url(${fundoAlvo})`);
+      }
+
+      // Título grande do overlay (o "Streetwear") — não o rótulo pequeno do
+      // card do carrossel. Só troca TEXTO quando a categoria tem tema
+      // próprio (Old Money/Minimal/Gym/Y2K); nas demais volta pro padrão
+      // ("Streetwear"). A FONTE (título + textos auxiliares) troca sempre,
+      // pra toda seção — pedido: "Aplicar tipografia específica para cada
+      // nicho" (ver `FONTES_POR_SECAO` no frontmatter).
+      if (wordmark) {
+        const textoAlvo = link.getAttribute('data-titulo-texto');
+        wordmark.textContent = textoAlvo || wordmarkTextoPadrao;
+      }
+      const fonteTituloAlvo = link.getAttribute('data-hero-fonte-titulo');
+      const fonteTextoAlvo = link.getAttribute('data-hero-fonte-texto');
+      if (wordmark) (wordmark as HTMLElement).style.fontFamily = fonteTituloAlvo || wordmarkFontePadrao;
+      if (tituloAux) (tituloAux as HTMLElement).style.fontFamily = fonteTextoAlvo || auxFontePadrao;
+      if (subAux) (subAux as HTMLElement).style.fontFamily = fonteTextoAlvo || auxFontePadrao;
+
+      // Notifica ExpositorCard (card do canto inferior-direito) da nova seção
+      const categoriaId = link.getAttribute('data-categoria') ?? 'basicos';
+      document.dispatchEvent(new CustomEvent('hero:secao', { detail: { categoriaId } }));
+
+      // "Abrir catálogo" (driver) precisa apontar pra categoria ativa no
+      // carrossel — sem isso o botão sempre abria a vitrine genérica
+      // (pedido: "quero que cada catalogo abra o seu respectivo"). Mesma
+      // âncora `#cat-<id>` já usada pelo "Ver item"/hrefAlvo acima.
+      if (cta && hrefAlvo) {
+        cta.setAttribute('href', hrefAlvo);
+        cta.setAttribute('data-cat', categoriaId);
+      }
+    }
+
+    // NÃO chama sincronizar() no load: os dots já vêm certos do servidor
+    // (1º `span` com `.ativa` no template), e chamar aqui entraria numa
+    // corrida com `aplicarPersonalizacao()` (script de Base.astro, roda
+    // depois deste e sobrescreve --acento de volta pro padrão do nicho) —
+    // --acento só muda de verdade a partir do 1º clique do usuário.
+
+    wrap.querySelectorAll('[data-hero-seta]').forEach((botao) => {
+      botao.addEventListener('click', () => {
+        const direcao = botao.getAttribute('data-hero-seta') === 'next' ? 1 : -1;
+        indice = (indice + direcao + total) % total;
+        sincronizar();
+      });
+    });
+  });
+</script>
+
+<style>
+  /* Hero — proporções 100% fluidas (clamp), uma única escala servindo mobile
+     (webview TikTok) e web. Layout: 1 coluna por padrão (mobile-first) → 2
+     colunas a partir de 900px. Formato: painel recortado (`clip-path:
+     url(#hero-recorte)`, ver `<defs>` no topo do template) inset dentro de
+     `.hero-outer` — modelo salvo em Downloads/Nova pasta, com respiro ao
+     redor (não full-bleed borda-a-borda como antes). */
+  /* `.hero-outer` é quem fica full-bleed (100vw) e carrega o respiro
+     (padding); `.hero` vive 100% dentro dele e leva o recorte. */
+  .hero-outer {
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    --hero-pad: clamp(10px, 3vw, 32px);
+    /* Sem padding-top de propósito (pedido: "cole a hero na parte
+       superior, retire o espaço entre ela e ... os componentes das
+       sessões" — o `NavBanner` renderiza logo acima) — respiro só nas
+       laterais/embaixo. */
+    padding: 0 var(--hero-pad) var(--hero-pad);
+  }
+
+  /* Anel giratório ao redor da hero — 3 camadas absolutas atrás de `.hero`
+     (z-index negativo), reveladas pelo `padding` fino de `.hero-glow`
+     (mesma "gradient border via inset" da referência Uiverse). Sem
+     `overflow:hidden` aqui de propósito — `.hero-glow-intense` (inset
+     negativo) vaza levemente além da caixa, é o que dá o "glow" ambiente;
+     cada camada individual já clipa a si mesma. */
+  .hero-glow {
+    position: relative;
+    width: 100%;
+    border-radius: clamp(16px, 2.5vw, 32px);
+    padding: 3px;
+    /* Derivações tonais a partir de --acento (mesmo padrão de --_g1/_g2/_g3
+       em MiniProduto.astro): puro, clareado, escurecido — sem fallback com
+       vírgula dentro de var() usado em shorthand (bug de build conhecido,
+       ver skill shiny-ui-effects), por isso o fallback aqui é hex puro. */
+    --_g1: var(--acento, #1E6FFF);
+    --_g2: color-mix(in oklch, var(--acento, #1E6FFF) 70%, white 30%);
+    --_g3: color-mix(in oklch, var(--acento, #1E6FFF) 55%, black 45%);
+  }
+  .hero-glow-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  .hero-glow-layer {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  /* `url(#hero-glow-unopaq*)` — filtro SVG (feColorMatrix) que multiplica o
+     canal alfa do gradiente borrado, senão o `blur()` sozinho só dilui a cor
+     até quase sumir (é o que faz a borda "acender" em vez de ficar leitosa). */
+  .hero-glow-blur {
+    filter: blur(3em) url(#hero-glow-unopaq);
+  }
+  .hero-glow-intense {
+    inset: -0.125em;
+    filter: blur(0.5em) url(#hero-glow-unopaq2);
+  }
+  .hero-glow-border {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .hero-glow-border .hero-glow-inside {
+    inset: -2px;
+    z-index: 0;
+    filter: blur(2px) url(#hero-glow-unopaq3);
+  }
+  .hero-glow-layer::before {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    animation: hero-glow-spin 8s cubic-bezier(0.56, 0.15, 0.28, 0.86) infinite;
+  }
+  /* `background-image` (longhand), não `background` (shorthand) — var() sem
+     fallback com vírgula, referenciando os tokens já resolvidos acima. */
+  .hero-glow-blur::before {
+    background-image: linear-gradient(-45deg, var(--_g2), transparent 46% 54%, var(--_g3));
+  }
+  .hero-glow-intense::before {
+    background-image: linear-gradient(-45deg, var(--_g1), transparent 35% 65%, var(--_g3));
+  }
+  .hero-glow-border .hero-glow-inside::before {
+    background-image: linear-gradient(-45deg, var(--_g2), transparent 35% 65%, var(--_g1));
+  }
+  @keyframes hero-glow-spin {
+    0% { rotate: 10deg; }
+    50% { rotate: 190deg; }
+    to { rotate: 370deg; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-glow-layer::before {
+      animation: none;
+    }
+  }
+
+  .hero {
+    /* min-height: coeficiente vw satura no desktop (mantém a web intacta) e
+       cai no piso no mobile (hero mais curta). `aspect-ratio` casa a altura
+       do painel com a proporção real dos banners novos (2752×1536, pedido:
+       "deixe o banner da altura das imagens") — sem ela, `background-size:
+       cover` cortava topo/base pra caber no `min-height` fixo, que era mais
+       baixo que a proporção da imagem. `min-height` continua como piso pro
+       mobile (tela estreita não fica baixa demais). */
+    --hero-gutter: clamp(20px, 6vw, 72px);
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    aspect-ratio: 2752 / 1536;
+    min-height: clamp(340px, 82vw, 560px);
+    padding-inline: var(--hero-gutter);
+    border-radius: clamp(16px, 2.5vw, 32px);
+    /* Fundo = a foto da ref (parede de concreto + linhas técnicas + wordmark
+       de grafite), importada em src/assets/hero/ — não é mais gerado por
+       CSS. A URL vem via `style` inline só no <header> (--hero-fundo-url),
+       não `define:vars` (que duplicaria o atributo em quase todo elemento
+       do componente à toa, já que o valor é fixo, não por nicho).
+       `background-color` só de fallback enquanto carrega / se falhar.
+       Scrim leve à esquerda (onde cai o texto) só o suficiente pra
+       garantir leitura sem lavar a foto. */
+    background-color: #c9c7c1;
+    background-image:
+      linear-gradient(100deg, rgba(20, 18, 14, 0.18) 0%, rgba(20, 18, 14, 0.04) 42%, transparent 62%),
+      var(--hero-fundo-url);
+    background-repeat: no-repeat, no-repeat;
+    background-size: cover, cover;
+    /* O wordmark "STREETWEAR" fica perto do canto inferior-direito da foto.
+       Com `cover`, a hero corta por cima/baixo quando é mais larga que a
+       foto (desktop) e pelas laterais quando é mais estreita (mobile) —
+       "right bottom" empurra o recorte pro canto onde o wordmark está nos
+       dois casos, em vez de cortá-lo no "center" default. */
+    background-position: center, right bottom;
+  }
+  /* Hero = fotos em camadas (HeroCamadas.astro). As camadas cobrem o painel
+     inteiro, então o banner pronto sai do `background` — e como
+     `--hero-fundo-url` deixa de ser referenciado, o navegador nem baixa o JPG.
+     O script do carrossel continua setando a variável (inofensivo). O desenho
+     do pôster (asteriscos, palavra gigante…) foi arquivado a pedido. */
+  .hero.hero--poster {
+    background-image: none;
+    background-color: #08090a;
+  }
+  /* Texto do mobile (`.hero-texto`) era tinta escura pro concreto claro antigo;
+     sobre as fotos/pôster escuros vira claro, com sombra pra ler em qualquer foto. */
+  .hero--poster .hero-texto { color: #f2f2f0; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6); }
+  .hero--poster .hero-kicker { color: rgba(242, 242, 240, 0.7); }
+  .hero--poster .hero-sub { color: rgba(242, 242, 240, 0.82); }
+  .hero--poster .hero-meta { color: rgba(242, 242, 240, 0.55); }
+  /* PixelFundoHero (Efeitos/PixelFundoHero.tsx) — cobre TODO o banner, mas
+     z-index:1 fica abaixo de `.hero-in` (2) e `.hero-media-carrossel`/
+     `.hero-media-central` (4): o hover só ativa na área vazia do banner,
+     nunca sobre o ExpositorCard/card central/textos (pedido: "nao pegue em
+     expositor"). O wrapper `astro-island` (client:load) não herda altura
+     nenhuma por padrão — precisa do position/inset aqui, do contrário o
+     componente só ocupa o topo do banner (mesmo problema já resolvido em
+     `NavBanner.astro` pra `astro-island`). */
+  .hero > :global(astro-island) {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+  }
+
+  .hero-in {
+    position: relative;
+    z-index: 2;
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-block: clamp(18px, 5vw, 76px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(14px, 4vw, 48px);
+  }
+
+  /* Texto era branco (fundo --acento saturado); no concreto claro vira
+     tinta escura — mesma lógica de opacidades, tom invertido. */
+  .hero-texto { display: flex; flex-direction: column; gap: var(--sp-3); color: #17140f; }
+  .hero-kicker { color: rgba(23, 20, 15, 0.68); }
+  .hero-titulo {
+    font-size: clamp(1.8rem, 1rem + 3.4vw, 3rem);
+    line-height: 1.05;
+    max-width: 20ch;
+    margin-bottom: 6px;
+  }
+  .hero-sub {
+    color: rgba(23, 20, 15, 0.78);
+    max-width: 46ch;
+    font-size: clamp(0.92rem, 0.88rem + 0.35vw, 1.125rem);
+  }
+  .hero-meta {
+    color: rgba(23, 20, 15, 0.55);
+    margin: clamp(10px, 2.5vw, 26px) 0 clamp(12px, 2.5vw, 30px);
+  }
+  .hero-cta {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: 28px;
+    /* var(--acento) — mesma cor por seção do botão "Abrir catálogo"
+       (`.hero-card-cta`) e das setas do carrossel (`.hero-seta`); antes
+       era um preto fixo, o único CTA da Hero que não acompanhava a
+       categoria ativa. Texto escuro pelo mesmo motivo que `.hero-card-cta`. */
+    background: var(--acento);
+    color: #0a0b0c;
+    border-radius: 6px;
+    font-family: var(--f-display);
+    font-weight: 700;
+  }
+
+  /* `.hero-media-texto` DEIXOU DE SER CARD (pedido: "Exclua completamente
+     o card existente com texto centralizado à esquerda, removendo também
+     bordas, sombras, fundos e quaisquer elementos residuais") — nenhum
+     background/blur/border/box-shadow sobra; é só o wordmark + título +
+     subtítulo soltos direto sobre a foto do banner, no canto
+     superior-esquerdo (ver `@media (min-width:900px)` abaixo).
+     `text-shadow` em cada texto (não aqui, por elemento) garante leitura
+     sobre a foto variável sem precisar de nenhum verniz/scrim novo.
+
+     `.hero-media-carrossel`/`.hero-media-central` continuam só SLOTS de
+     posição — o visual (glass/hover) mora em `HeroCarrosselCard.astro`
+     (`.uiv-card`), que se repete nos dois. No mobile só o CENTRAL aparece
+     (é o único interativo — pedido: "deixe o do centro ativo"); o do
+     canto é exclusivo de desktop, onde cabem os dois. */
+  .hero-media-texto {
+    display: none;
+  }
+
+  .hero-media-carrossel {
+    display: none;
+  }
+
+  .hero-media-central {
+    display: flex;
+    justify-content: center;
+    z-index: 4;
+    margin-inline: var(--hero-gutter);
+    margin-block-end: clamp(14px, 4vw, 32px);
+  }
+
+  /* Wordmark — vive em `.hero-media-texto`, só aparece no desktop (ver
+     `@media (min-width:900px)` abaixo). Escondido por padrão porque a
+     própria `.hero-media-texto` já é `display:none` no mobile. */
+  .hero-wordmark {
+    display: none;
+  }
+
+  /* ≥ 900px — layout web. `.hero-media-texto` sai do fluxo (escondida no
+     mobile) e vira overlay direto sobre a foto, ANCORADO NO CANTO
+     SUPERIOR-ESQUERDO (pedido: "posicionando todo o conjunto na região
+     superior esquerda, com uma hierarquia editorial limpa e equilibrada,
+     sem sobrepor excessivamente o personagem") — `max-width` mantém o
+     bloco fora da faixa central/direita onde o modelo de cada banner
+     costuma estar. O card do carrossel (canto inferior-direito) só existe
+     a partir daqui; o central sai do fluxo normal e vai pro meio do
+     painel (pedido: "duplique o modelo da parte inferior direita e
+     ajuste ele ao centro"). */
+  @media (min-width: 900px) {
+    /* Headline/descrição/CTA saem de `.hero-texto` (mobile) — no desktop
+       vivem no overlay, junto do wordmark. `.hero-texto` inteiro (kicker +
+       meta) some no desktop também — pedido antigo: "remova prometeus,
+       exemplo... e todas as partes acima do card" —, então some o bloco
+       todo, não só titulo/sub/cta. */
+    .hero-texto {
+      display: none;
+    }
+
+    .hero-media-texto {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      gap: var(--sp-2);
+      position: absolute;
+      left: var(--hero-gutter);
+      top: var(--hero-gutter);
+      max-width: clamp(320px, 46vw, 560px);
+    }
+
+    /* Card do carrossel (canto inferior-direito) — só existe a partir
+       daqui; `HeroCarrosselCard` cuida do visual, isto aqui é só posição. */
+    .hero-media-carrossel {
+      display: block;
+      position: absolute;
+      right: calc(var(--hero-gutter) + clamp(20px, 4vw, 50px));
+      bottom: calc(var(--hero-gutter) + clamp(20px, 4vw, 50px));
+      z-index: 4;
+    }
+
+    /* Card central — mesmo componente, duplicado (pedido: "duplique o
+       modelo da parte inferior direita e ajuste ele ao centro"). Sai do
+       fluxo normal (empilhado no mobile) e vai pro meio do painel, abaixo
+       do centro exato (pedido: "abaixe um pouco mais o card ao centro" →
+       "abaixe mais o card"). */
+    .hero-media-central {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + clamp(140px, 20vw, 260px));
+      transform: translate(-50%, -50%);
+      margin: 0;
+    }
+
+    /* Hierarquia editorial (pedido: "Ajustar apenas fonte, peso,
+       espaçamento, escala, hierarquia e posicionamento dos textos
+       existentes") — wordmark = título grande (maior peso/escala);
+       título + subtítulo do nicho = textos auxiliares, menores e mais
+       leves. `text-shadow` substitui o antigo cartão/scrim: garante
+       leitura direto sobre a foto sem adicionar nenhum elemento gráfico
+       novo. Fonte de cada um trocada por JS por seção
+       (`FONTES_POR_SECAO`/`data-hero-fonte-*`) — aqui só o que é comum às
+       5: peso, espaçamento, tamanho, cor, sombra. */
+    .hero-wordmark {
+      display: block;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+      line-height: 0.95;
+      font-size: clamp(3rem, 1.8rem + 4.5vw, 4.8rem);
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+    .hero-card-titulo {
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: 0.01em;
+      font-size: clamp(1.4rem, 1.1rem + 1.3vw, 1.9rem);
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+    .hero-card-sub {
+      font-weight: 400;
+      line-height: var(--lh-normal);
+      font-size: clamp(1.15rem, 1rem + 0.7vw, 1.4rem);
+      color: rgba(255, 255, 255, 0.82);
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  /* ≤ 520px — celular estreito: CTA ocupa a largura, título mais contido */
+  @media (max-width: 520px) {
+    .hero-cta { align-self: stretch; }
+    .hero-titulo { max-width: 24ch; }
+  }
+</style>

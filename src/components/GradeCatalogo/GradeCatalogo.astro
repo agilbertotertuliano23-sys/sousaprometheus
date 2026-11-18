@@ -1,15 +1,52 @@
 ---
 /**
- * GradeCatalogo — E6-01, ajustada por E6-05 (ADR-008 Fase 0). Agrupa por
- * categoria efetiva (doc 08 §4.1/§4.2). É o **Bloco 2c** da `#tela-vitrine` e o
- * fallback sem-JS de todo o Bloco 2 — fica sempre visível.
+ * GradeCatalogo — a página de apresentação do catálogo (`#tela-vitrine`), no
+ * modelo da referência "SELF-DISCIPLINE" (download (8).jfif): página CREME com
+ * quadriculado sutil, título GIGANTE ("TODOS") com o total em um círculo, filtros
+ * em pílulas com contagem + busca, e grade de 3 colunas de quadros quadrados
+ * (`CardLoja`). Antes era o modelo `catalogo_categoria_nincho` (banner colorido
+ * + banners de arte por categoria + 5 colunas de `MiniProduto` sobre preto).
  *
- * Headings usam `id="grade-cat-<id>"` (NÃO `cat-<id>`): a âncora `#cat-<id>`
- * pertence à `<section>` de trilha do Bloco 2b (doc 09 §2, nota).
+ * O que foi mantido (a máquina de telas depende):
+ *  - `<section class="grade-cat" id="cat-<id>">` por categoria — o filtro de
+ *    `telas.ts` (`aplicarFiltroCategoria`) esconde as outras com `hidden`;
+ *  - `ProximaSecao` ao fim de cada categoria (vira o bloco PRETO grande, como o
+ *    rodapé preto da referência) — o fundo preto/tokens dela são forçados abaixo;
+ *  - âncoras `#cat-<id>` (NavBanner/Hero) e o `data-ir="vitrine"`+`data-cat`.
+ * Os CHIPS de categoria usam esse mesmo roteador (`data-ir="vitrine"` +
+ * `data-cat`), então nenhuma lógica de filtro nova; o script só espelha o estado
+ * (chip ativo, título e contagem) observando o atributo `hidden` das seções, e
+ * faz a BUSCA por nome (esconde cards com classe própria, sem tocar em `hidden`).
+ *
+ * Banners de ARTE por categoria: tinham saído (a arte tem título creme feito pra
+ * fundo escuro e some na página creme) e VOLTARAM, abaixo do título de cada
+ * categoria, numa faixa preta em largura total com fio na cor da categoria
+ * (`.grade-cat-arte`; entram em "janela", ver lib/motion/revelar.ts). Saiu de vez
+ * só o banner colorido do topo.
  */
 import type { Nicho } from '../../data/tipos';
-import { resolverCategorias, produtosPorCategoria } from '../../lib/catalogo/resolver';
-import CardExpansivel from '../Vitrine/CardExpansivel.astro';
+import { resolverCategorias, produtosPorCategoria, produtosPorSubcategoria } from '../../lib/catalogo/resolver';
+import CardLoja from './CardLoja.astro';
+import ProximaSecao from '../Vitrine/ProximaSecao.astro';
+import { Image } from 'astro:assets';
+
+// Banner por categoria (arte pronta: título + produtos compostos pelo usuário,
+// fundo transparente, título em creme) — voltam ABAIXO do título de cada
+// categoria, numa faixa preta (o creme da arte some sobre a página creme).
+// Categorias sem tema próprio (`_outros`/`_tudo`) ficam sem arte.
+import bannerStreetwear from '../../assets/hero/secao-banners/streetwear-secao-banner.png';
+import bannerGym from '../../assets/hero/secao-banners/gym-secao-banner.png';
+import bannerY2k from '../../assets/hero/secao-banners/y2k-secao-banner.png';
+import bannerOldMoney from '../../assets/hero/secao-banners/old-money-secao-banner.png';
+import bannerMinimal from '../../assets/hero/secao-banners/minimal-secao-banner.png';
+
+const BANNER_POR_CATEGORIA: Record<string, ImageMetadata> = {
+  streetwear: bannerStreetwear,
+  gym: bannerGym,
+  y2k: bannerY2k,
+  'old-money': bannerOldMoney,
+  minimal: bannerMinimal,
+};
 
 interface Props {
   nicho: Nicho;
@@ -19,32 +56,410 @@ interface Props {
 const { nicho, variante = 'a' } = Astro.props;
 const categorias = resolverCategorias(nicho, variante);
 const grupos = produtosPorCategoria(nicho, variante);
+const contagem = (id: string) => (grupos.get(id) ?? []).length;
+const total = categorias.reduce((soma, cat) => soma + contagem(cat.id), 0);
 ---
-<div class="grade-catalogo">
-  {categorias.map((cat) => (
-    <section class="grade-cat">
-      <h2 id={`grade-cat-${cat.id}`} class="grade-cat-titulo">{cat.rotulo}</h2>
-      {cat.descricao && <p class="grade-cat-desc">{cat.descricao}</p>}
-      <div class="grade">
-        {(grupos.get(cat.id) ?? []).map((p) => (
-          <CardExpansivel produto={p} slug={nicho.slug} cta={nicho.cta} grupo={`grade-${cat.id}`} />
+<div class="grade" data-total={total}>
+  <!-- Cabeçalho: título gigante + contagem, filtros (pílulas) + busca -->
+  <header class="loja-topo">
+    <p class="loja-kicker">Catálogo · {nicho.nome}</p>
+    <h2 class="loja-titulo">
+      <span data-loja-titulo>Todos</span>
+      <span class="loja-contagem" data-loja-contagem>{total}</span>
+    </h2>
+
+    <div class="loja-filtros">
+      <nav class="loja-chips" aria-label="Filtrar por categoria">
+        <a class="loja-chip loja-chip--ativo" href="#tela-vitrine" data-ir="vitrine" data-chip="">
+          Todos ({total})
+        </a>
+        {categorias.map((cat) => (
+          <a class="loja-chip" href={`#cat-${cat.id}`} data-ir="vitrine" data-cat={cat.id} data-chip={cat.id}>
+            {cat.rotulo} ({contagem(cat.id)})
+          </a>
         ))}
-      </div>
-    </section>
-  ))}
+      </nav>
+      <label class="loja-busca">
+        <input type="search" placeholder="Buscar" aria-label="Buscar produto" autocomplete="off" data-loja-busca />
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" />
+        </svg>
+      </label>
+    </div>
+  </header>
+
+  <!-- Corpo: uma seção por categoria (o filtro esconde as outras) -->
+  <div class="grade-corpo">
+    {categorias.map((cat, i) => {
+      const prods = grupos.get(cat.id) ?? [];
+      // Cor da categoria (ou o acento do nicho) alimenta o painel "próxima
+      // categoria" — ver ProximaSecao.astro.
+      const corCat = cat.cor ?? nicho.acento;
+      const proxima = categorias[i + 1];
+      const banner = BANNER_POR_CATEGORIA[cat.id];
+      return (
+        <section
+          class="grade-cat"
+          id={`cat-${cat.id}`}
+          data-rotulo={cat.rotulo}
+          data-total={prods.length}
+          style={cat.cor ? `--cat-cor: ${cat.cor}` : undefined}
+        >
+          <div class="grade-cat-header">
+            <h3 id={`grade-cat-${cat.id}`} class="grade-cat-titulo">{cat.rotulo}</h3>
+            <span class="grade-cat-num">{prods.length}</span>
+            {cat.descricao && <p class="grade-cat-desc">{cat.descricao}</p>}
+          </div>
+
+          {banner && (
+            <div class="grade-cat-arte">
+              <Image
+                src={banner}
+                alt={cat.rotulo}
+                class="grade-cat-arte-img"
+                widths={[480, 768, 1200, 1600]}
+                sizes="(max-width: 600px) 100vw, 525px"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          )}
+
+          {prods.length > 0 ? (
+            <div class="grade-subgrupos">
+              {produtosPorSubcategoria(prods).map((sub) => (
+                <div class="grade-sub">
+                  <p class="grade-sub-titulo">{sub.rotulo}</p>
+                  <ol class="grade-grid">
+                    {sub.produtos.map((p) => (
+                      <li class="loja-item"><CardLoja produto={p} slug={nicho.slug} /></li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p class="grade-vazia">Nada nesta categoria por enquanto.</p>
+          )}
+
+          {proxima && (
+            <ProximaSecao
+              proximoId={proxima.id}
+              proximoRotulo={proxima.rotulo}
+              corDe={corCat}
+              corPara={proxima.cor ?? nicho.acento}
+              indice={i + 2}
+              total={categorias.length}
+              arte={BANNER_POR_CATEGORIA[proxima.id]}
+            />
+          )}
+        </section>
+      );
+    })}
+  </div>
 </div>
-<style>
-  .grade-catalogo { display: flex; flex-direction: column; gap: var(--sp-8); }
-  .grade-cat-titulo { font-size: var(--fs-2); }
-  .grade-cat-desc {
-    color: var(--texto-fraco);
-    font-size: var(--fs-00);
-    margin: var(--sp-1) 0 0;
+
+<script>
+  // Espelha o estado do catálogo no cabeçalho + busca por nome. O FILTRO em si
+  // é do roteador de telas (telas.ts): ele põe/tira `hidden` nas seções.
+  const raiz = document.querySelector<HTMLElement>('#tela-vitrine .grade');
+  if (raiz) {
+    const chips = Array.from(raiz.querySelectorAll<HTMLElement>('.loja-chip'));
+    const titulo = raiz.querySelector<HTMLElement>('[data-loja-titulo]');
+    const contagem = raiz.querySelector<HTMLElement>('[data-loja-contagem]');
+    const secoes = Array.from(raiz.querySelectorAll<HTMLElement>('.grade-cat'));
+    const total = Number(raiz.dataset.total ?? 0);
+
+    const sincronizar = () => {
+      const visiveis = secoes.filter((s) => !s.hidden);
+      const unica = secoes.length > 1 && visiveis.length === 1 ? visiveis[0] : null;
+      const cat = unica ? unica.id.replace(/^cat-/, '') : '';
+      chips.forEach((c) => c.classList.toggle('loja-chip--ativo', (c.dataset.chip ?? '') === cat));
+      if (titulo) titulo.textContent = unica ? (unica.dataset.rotulo ?? 'Todos') : 'Todos';
+      if (contagem) contagem.textContent = String(unica ? Number(unica.dataset.total ?? 0) : total);
+    };
+    new MutationObserver(sincronizar).observe(raiz, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['hidden'],
+    });
+    sincronizar();
+
+    const campo = raiz.querySelector<HTMLInputElement>('[data-loja-busca]');
+    campo?.addEventListener('input', () => {
+      const q = campo.value.trim().toLowerCase();
+      raiz.querySelectorAll<HTMLElement>('.loja-item').forEach((li) => {
+        const nome = li.querySelector<HTMLElement>('.loja-card')?.dataset.nome ?? '';
+        li.classList.toggle('loja-oculto', q !== '' && !nome.includes(q));
+      });
+      raiz.querySelectorAll<HTMLElement>('.grade-sub').forEach((sub) => {
+        sub.classList.toggle('sem-resultado', sub.querySelectorAll('.loja-item:not(.loja-oculto)').length === 0);
+      });
+    });
   }
+</script>
+
+<style>
+  /* Skin "sufgang": a página do catálogo é BRANCA, como a coleção da ref.
+     (papel #fff, foto em #f2f2f2, tinta preta, sem quadriculado). Os tokens
+     de texto são redefinidos aqui (o site é escuro): quem herdar `--texto`
+     fica escuro. */
   .grade {
+    --loja-papel: #ffffff;
+    --loja-tinta: #000000;
+    --loja-tile: #f2f2f2;
+    --loja-lime: var(--acento);
+    --loja-linha: rgba(0, 0, 0, 0.12);
+    --texto: var(--loja-tinta);
+    --texto-fraco: rgba(15, 15, 15, 0.55);
+    --linha: var(--loja-linha);
+
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding: clamp(48px, 7vw, 96px) 0 0;
+    color: var(--loja-tinta);
+    text-align: left;
+    background-color: var(--loja-papel);
+  }
+
+  /* ---- cabeçalho ---- */
+  .loja-topo {
+    max-width: clamp(320px, 82vw, 1240px);
+    margin: 0 auto clamp(32px, 5vw, 64px);
+  }
+  .loja-kicker {
+    margin: 0 0 12px;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--texto-fraco);
+  }
+  .loja-titulo {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(10px, 1.6vw, 20px);
+    margin: 0 0 clamp(20px, 3vw, 36px);
+    font-family: var(--f-display);
+    font-weight: 500;
+    font-size: clamp(2.6rem, 7vw, 6rem);
+    line-height: 0.95;
+    letter-spacing: var(--tracking-titulo);
+    text-transform: uppercase;
+    color: var(--loja-tinta);
+  }
+  /* o roteador de telas (telas.ts → focar) dá foco programático a este título
+     (tabindex=-1, só pra leitor de tela/teclado); ele não é interativo, então
+     sem o anel de foco do navegador em volta do cabeçalho. */
+  .loja-titulo:focus,
+  .loja-titulo:focus-visible {
+    outline: none;
+  }
+  .loja-contagem {
+    display: grid;
+    place-items: center;
+    margin-top: 0.1em;
+    width: clamp(34px, 4.2vw, 56px);
+    aspect-ratio: 1;
+    border: 1px solid var(--loja-tinta);
+    border-radius: 50%;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .loja-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 10px;
+  }
+  .loja-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .loja-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 15px;
+    border: 1px solid var(--loja-tinta);
+    border-radius: var(--raio-pill);
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--loja-tinta);
+    text-decoration: none;
+    transition: background 0.25s var(--ed-ease, ease), color 0.25s var(--ed-ease, ease);
+  }
+  .loja-chip:hover { background: rgba(15, 15, 15, 0.08); }
+  .loja-chip:focus-visible { outline: 2px solid var(--loja-tinta); outline-offset: 3px; }
+  .loja-chip--ativo,
+  .loja-chip--ativo:hover {
+    background: var(--loja-tinta);
+    color: var(--loja-papel);
+  }
+
+  .loja-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    min-width: 190px;
+    padding: 8px 15px;
+    border: 1px solid var(--loja-tinta);
+    border-radius: var(--raio-pill);
+    color: var(--loja-tinta);
+  }
+  .loja-busca input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: inherit;
+  }
+  .loja-busca input::placeholder { color: var(--texto-fraco); }
+  .loja-busca:focus-within { box-shadow: 0 0 0 2px rgba(15, 15, 15, 0.18); }
+  .loja-busca svg { width: 14px; height: 14px; flex: none; }
+  @media (max-width: 600px) {
+    .loja-busca { margin-left: 0; width: 100%; }
+  }
+
+  /* ---- corpo ---- */
+  .grade-corpo {
+    max-width: clamp(320px, 82vw, 1240px);
+    margin: 0 auto;
+    padding-bottom: clamp(48px, 7vw, 96px);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-3);
-    margin-top: var(--sp-4);
+    gap: clamp(40px, 6vw, 72px);
+  }
+
+  .grade-cat {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(24px, 3vw, 40px);
+  }
+  /* `display:flex` acima vence o `[hidden]` do navegador; sem isto o filtro de
+     categoria de telas.ts (aplicarFiltroCategoria) marcava `hidden` e nada sumia. */
+  .grade-cat[hidden] {
+    display: none;
+  }
+
+  .grade-cat-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--loja-tinta);
+  }
+  .grade-cat-titulo {
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 500;
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--loja-tinta);
+  }
+  .grade-cat-num {
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--texto-fraco);
+  }
+  .grade-cat-desc {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: var(--fs-00);
+    color: var(--texto-fraco);
+  }
+
+  /* Arte da categoria, ABAIXO do título: faixa preta em largura total (a arte tem
+     título creme feito pra fundo escuro) com fio na cor da categoria em cima e
+     embaixo. Imagem centralizada, tamanho contido (525px, como estava). */
+  .grade-cat-arte {
+    position: relative;
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    display: flex;
+    justify-content: center;
+    background: #000;
+    border-block: 2px solid var(--cat-cor, var(--acento));
+  }
+  .grade-cat-arte :global(.grade-cat-arte-img) {
+    display: block;
+    width: 100%;
+    max-width: 525px;
+    height: auto;
+    object-fit: contain;
+    padding-block: clamp(7px, 2vw, 19px);
+  }
+
+  .grade-subgrupos {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(28px, 4vw, 48px);
+  }
+  .grade-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .grade-sub-titulo {
+    margin: 0;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--texto-fraco);
+  }
+  .grade-sub.sem-resultado { display: none; }
+
+  /* grade de 3 colunas (2 no tablet/mobile), espaço vertical generoso */
+  .grade-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(28px, 4vw, 56px) clamp(14px, 1.6vw, 20px);
+  }
+  .grade-grid > li { min-width: 0; }
+  .loja-item.loja-oculto { display: none; }
+
+  @media (max-width: 900px) {
+    .grade-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .grade-grid { gap: 26px 12px; }
+  }
+
+  .grade-vazia {
+    margin: 12px 0 24px;
+    color: var(--texto-fraco);
+    font-size: var(--fs-00);
+  }
+
+  /* o painel "próxima categoria" vira o BLOCO PRETO da página (como o rodapé
+     preto da referência) — e recebe de volta os tokens claros de texto */
+  .grade :global(.proxima) {
+    background: #000;
+    --texto: #f2f3f5;
+    --texto-fraco: #8b9098;
   }
 </style>

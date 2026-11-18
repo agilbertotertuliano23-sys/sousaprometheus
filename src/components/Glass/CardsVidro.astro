@@ -1,0 +1,175 @@
+---
+/**
+ * CardsVidro — 3 cards de vidro (glassmorphism) em leque, adaptado de
+ * "Glass Cards" (Uiverse.io by codebykay101). Pedido: "cards de
+ * retangulos em pe [portrait], tres, com um simbolo de video" —
+ * colocados logo após FlowingMenuCategorias, fechando o bloco de menus
+ * antes das trilhas de produto começarem.
+ *
+ * Ícone: Font Awesome Free 6.7.2 "video" (solid) — CC BY 4.0.
+ * https://fontawesome.com/license/free
+ *
+ * Cada card leva pra `GaleriaTikTok` (é o conteúdo de vídeo real da
+ * página, lá embaixo) — âncora nativa (`href="#galeria-tiktok"`, funciona
+ * sem JS). Com JS, um scroll suave local assume o clique: a máquina de
+ * telas (`src/lib/navegacao/telas.ts`) reage a QUALQUER `hashchange` não
+ * reconhecido devolvendo o scroll pro topo de `#tela-entrada` — usar
+ * `href="#galeria-tiktok"` puro faria o scroll saltar pra galeria e voltar
+ * pro topo na sequência. Por isso o clique é interceptado (preventDefault)
+ * e feito via `scrollIntoView` direto, sem tocar no hash/history.
+ *
+ * Leque controlado por scroll (GSAP + ScrollTrigger, `gsap` já é dependência
+ * do projeto): fechado = leque sobreposto (rotação --r + xPercent puxando
+ * pro centro); aberto = "como se o mouse tivesse passado em cima" (rotação
+ * zerada, cards lado a lado). Pedido: "ao rolar os cards se abram... só
+ * retornam a ficar juntos se o scroll voltar" — troquei o antigo gatilho
+ * `:hover` por `ScrollTrigger.onEnter` (abre) / `onLeaveBack` (fecha),
+ * único e mesmo estado que antes era só do hover. Sem JS os cards ficam no
+ * estado inicial (fechado, no HTML/CSS) — ainda clicáveis normalmente.
+ * Respeita `prefers-reduced-motion` (pula a animação, cards ficam abertos).
+ *
+ * Conteúdo do topo (pedido: "ajuste a parte da imagem e perfil nos cards,
+ * mas não do corpo") — o ícone de vídeo centralizado saiu; entrou
+ * `CardVideoPost` (perfil + mídia, ver esse arquivo pro porquê de não ter
+ * curtir/comentar/legenda ainda). Perfil = mesma marca/placeholder já usada
+ * em `SigaTikTok.astro` (sousa/@sousayl). Mídia = 3 vídeos reais do dono
+ * ("ajuste esses videos nos cards"), recortados/recomprimidos pra
+ * `public/cards-vidro/` — ver comentário em `CardVideoPost.tsx`.
+ */
+import CardVideoPost from './CardVideoPost';
+
+const PERFIL = { nome: 'sousa', handle: '@sousayl', fallback: 'S' };
+// Efeito câmera + zoom-troca (ver CardVideoPost.tsx): cada card alterna entre
+// os 3 vídeos; `inicio` = qual deles aparece primeiro, `atrasoMs` defasa a
+// 1ª troca pra os 3 cards não trocarem juntos.
+const playlist = [
+  { video: '/cards-vidro/card-video-1.mp4', poster: '/cards-vidro/card-video-1.jpg' },
+  { video: '/cards-vidro/card-video-2.mp4', poster: '/cards-vidro/card-video-2.jpg' },
+  { video: '/cards-vidro/card-video-3.mp4', poster: '/cards-vidro/card-video-3.jpg' },
+];
+const cartoes = [
+  { r: -15, inicio: 0, atrasoMs: 0, alt: 'Vídeo em destaque — sousa' },
+  { r: 5, inicio: 1, atrasoMs: 1400, alt: 'Vídeo em destaque — sousa' },
+  { r: 25, inicio: 2, atrasoMs: 2800, alt: 'Vídeo em destaque — sousa' },
+];
+---
+<div class="cards-vidro">
+  {cartoes.map((c, i) => (
+    <a href="#galeria-tiktok" class="vidro" style={`--r:${c.r}`} data-scroll="galeria-tiktok" aria-label="Ver vídeos">
+      <CardVideoPost
+        client:visible
+        numero={i + 1}
+        total={cartoes.length}
+        nome={PERFIL.nome}
+        handle={PERFIL.handle}
+        fallback={PERFIL.fallback}
+        playlist={playlist}
+        inicio={c.inicio}
+        atrasoMs={c.atrasoMs}
+        alt={c.alt}
+      />
+    </a>
+  ))}
+</div>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import { prefereMenosMovimento } from '../../lib/motion/reduced-motion';
+  import { rolarPara } from '../../lib/motion/rolagem';
+
+  // Scroll direto, sem mexer no hash — ver comentário no frontmatter.
+  document.querySelectorAll<HTMLAnchorElement>('[data-scroll]').forEach((link) => {
+    link.addEventListener('click', (ev) => {
+      const alvo = document.getElementById(link.dataset.scroll!);
+      if (!alvo) return;
+      ev.preventDefault();
+      void rolarPara(alvo); // curva/tempo do site (movimento.ts)
+    });
+  });
+
+  // Leque controlado por scroll — ver comentário no frontmatter.
+  const grupo = document.querySelector<HTMLElement>('.cards-vidro');
+  const cards = grupo ? Array.from(grupo.querySelectorAll<HTMLElement>('.vidro')) : [];
+
+  if (grupo && cards.length && !prefereMenosMovimento()) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    const centro = (cards.length - 1) / 2;
+    const OVERLAP_PCT = 55; // quanto cada card lateral invade o vizinho quando "fechado"
+    const rotacaoDe = (el: HTMLElement) => Number(el.style.getPropertyValue('--r')) || 0;
+    const xPercentDe = (i: number) => -(i - centro) * OVERLAP_PCT;
+
+    // Estado inicial (fechado) — igual ao que já vinha do HTML/CSS.
+    gsap.set(cards, {
+      rotate: (i: number) => rotacaoDe(cards[i]),
+      xPercent: (i: number) => xPercentDe(i),
+    });
+
+    ScrollTrigger.create({
+      trigger: grupo,
+      start: 'top 78%',
+      onEnter: () =>
+        gsap.to(cards, { rotate: 0, xPercent: 0, duration: 0.6, ease: 'power3.out', stagger: 0.06 }),
+      onLeaveBack: () =>
+        gsap.to(cards, {
+          rotate: (i: number) => rotacaoDe(cards[i]),
+          xPercent: (i: number) => xPercentDe(i),
+          duration: 0.5,
+          ease: 'power3.inOut',
+          stagger: 0.04,
+        }),
+    });
+  }
+</script>
+
+<style>
+  .cards-vidro {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    /* Topo reduzido de novo (pedido: "a legenda ... se aproxime um pouco
+       mais deles") — o afastamento do menu acima agora é o `espacoCima` da
+       legenda "Bastidores em vídeo" (SecaoUnica.astro), não mais este
+       padding; ele só precisa do respiro entre a legenda e os cards. */
+    padding: clamp(24px, 4vw, 48px) clamp(10px, 3vw, 32px) clamp(28px, 5vw, 52px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Respiro entre os cards no estado "aberto" (separado) — pedido:
+       "afaste mais os cards na separação" (+ "mais" x2). */
+    gap: clamp(72px, 15vw, 140px);
+  }
+
+  /* Tamanho maior (pedido: "aumente o tamanho deles" — 2ª rodada; depois
+     "aumente a largura dos cards" — 3ª rodada, só a largura, altura ficou
+     como estava). Sem JS, o único efeito visível é a rotação (--r) — o
+     leque sobreposto (xPercent) e o estado "aberto" são aplicados via GSAP
+     no <script> abaixo. `flex-shrink` (padrão) evita overflow horizontal em
+     telas bem estreitas: os 3 cards encolhem juntos antes de vazar o
+     viewport. */
+  .vidro {
+    position: relative;
+    width: clamp(170px, 42vw, 320px);
+    height: clamp(240px, 58vw, 440px);
+    /* Visual "editorial minimalista" (tokens `--ed-*` de global.css): sai o
+       vidro (blur + borda translúcida + sombra + cantos arredondados) e entra
+       um retângulo reto de fundo sólido escuro com fio fino. Sólido (não
+       transparente) porque no leque os cards se sobrepõem. */
+    background: #0b0b0b;
+    border: 1px solid var(--ed-linha-forte);
+    box-shadow: none;
+    border-radius: 0;
+    overflow: hidden;
+    transform: rotate(calc(var(--r) * 1deg));
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+
+  /* O wrapper `astro-island` (client:visible) não herda altura por padrão —
+     mesmo ajuste já usado em TresCardsInclinados.astro/NavBanner.astro. */
+  .vidro :global(astro-island) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>

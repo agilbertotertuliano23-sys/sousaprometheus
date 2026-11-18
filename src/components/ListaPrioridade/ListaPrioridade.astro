@@ -1,0 +1,222 @@
+---
+/**
+ * ListaPrioridade — captura de e-mail (pedido do dono: "uma seção abaixo
+ * como newsletter, mas não com esse nome"). Última seção de `#tela-entrada`,
+ * logo após `Faq`.
+ *
+ * Formulário nativo (POST direto pro Formspree, RF-16-friendly: funciona
+ * sem JS — o browser navega pro `_next` depois do POST). O <script> abaixo é
+ * só progressive enhancement: intercepta o submit, manda via fetch
+ * (Accept: application/json) e troca o card pelo estado de sucesso inline,
+ * sem sair da página. Honeypot `_gotcha` (convenção Formspree) contra spam
+ * de bot simples.
+ *
+ * PUBLIC_FORMSPREE_ID ainda não setado em produção — ver `.env.example`.
+ * Sem ele, o form aponta pro Formspree sem ID e a submissão vai falhar; um
+ * aviso aparece só em DEV (mesmo padrão de `nichos.ts`/`RenderBlocos.astro`).
+ *
+ * Visual reestilizado pra virar a barra "Join our newsletter" da referência
+ * colada pelo dono — full-width, texto à esquerda / form à direita, em vez
+ * do cartão centralizado redondo de antes. Agora é o topo do rodapé
+ * completo (`Rodape.astro`, logo abaixo).
+ */
+const formspreeId = import.meta.env.PUBLIC_FORMSPREE_ID ?? '';
+const action = formspreeId ? `https://formspree.io/f/${formspreeId}` : '';
+---
+<section class="lista-prioridade" id="lista-prioridade">
+  <div class="lp-barra">
+    <div class="lp-texto">
+      <p class="lp-titulo">Entra na lista e saiba primeiro</p>
+      <p class="lp-sub">A gente avisa quando cai produto novo, volta o estoque ou sai desconto. Sem spam.</p>
+    </div>
+
+    <div class="lp-acao">
+      {formspreeId ? (
+        <form class="lp-form" action={action} method="POST" data-lista-prioridade>
+          <input type="text" name="_gotcha" class="lp-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <label class="lp-campo">
+            <span class="sr-only">Seu e-mail</span>
+            <input
+              type="email"
+              name="email"
+              placeholder="seu@email.com"
+              required
+              autocomplete="email"
+              inputmode="email"
+            />
+          </label>
+          <button type="submit" class="lp-botao">Quero entrar</button>
+        </form>
+      ) : (
+        import.meta.env.DEV && (
+          <p class="lp-aviso-dev">
+            [DEV] `PUBLIC_FORMSPREE_ID` não setado — crie um form em formspree.io e
+            coloque o ID no `.env` pra este formulário funcionar.
+          </p>
+        )
+      )}
+
+      <p class="lp-sucesso" data-lista-prioridade-sucesso hidden>
+        Prontinho — você tá na lista. 🎉
+      </p>
+      <p class="lp-erro" data-lista-prioridade-erro hidden>
+        Não deu pra enviar agora. Tenta de novo em instantes.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Progressive enhancement — sem isso o form já funciona via POST nativo
+  // (Formspree redireciona pro `_next` ou pra própria página de obrigado).
+  const form = document.querySelector<HTMLFormElement>('[data-lista-prioridade]');
+  if (form) {
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const sucesso = document.querySelector<HTMLElement>('[data-lista-prioridade-sucesso]');
+      const erro = document.querySelector<HTMLElement>('[data-lista-prioridade-erro]');
+      const botao = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (botao) botao.disabled = true;
+      erro?.setAttribute('hidden', '');
+
+      try {
+        const resposta = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        if (resposta.ok) {
+          form.hidden = true;
+          sucesso?.removeAttribute('hidden');
+        } else {
+          erro?.removeAttribute('hidden');
+        }
+      } catch {
+        erro?.removeAttribute('hidden');
+      } finally {
+        if (botao) botao.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .lista-prioridade {
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: 0 5vw;
+  }
+
+  /* Barra full-width (referência: "Join our newsletter") — texto à esquerda,
+     form à direita, separada por uma linha do que vem acima (era o antigo
+     `.lp-divisor`, agora incorporado como borda da própria barra). */
+  .lp-barra {
+    padding: clamp(28px, 5vw, 44px) 0;
+    border-top: 1px solid var(--linha);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+
+  .lp-texto { max-width: 480px; }
+  .lp-titulo {
+    margin: 0;
+    font-size: clamp(1.2rem, 1rem + 1vw, 1.6rem);
+    font-weight: 700;
+  }
+  .lp-sub {
+    margin: var(--sp-2) 0 0;
+    color: var(--texto-fraco);
+    font-size: var(--fs-0);
+  }
+
+  .lp-acao { width: 100%; }
+
+  .lp-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    width: 100%;
+    max-width: 420px;
+  }
+  .lp-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .lp-campo input {
+    width: 100%;
+    min-height: var(--toque-min);
+    padding: 0 var(--sp-4);
+    border-radius: var(--raio-sm);
+    border: 1px solid var(--linha);
+    background: var(--bg);
+    color: var(--texto);
+    font-size: var(--fs-0);
+  }
+  .lp-campo input:focus-visible {
+    outline: 2px solid var(--acento-texto);
+    outline-offset: 2px;
+  }
+  .lp-botao {
+    min-height: var(--toque-min);
+    padding: 0 var(--sp-4);
+    border: none;
+    border-radius: var(--raio-sm);
+    background: var(--acento);
+    color: #fff;
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: var(--fs-0);
+    cursor: pointer;
+    transition: filter 0.2s ease;
+    white-space: nowrap;
+  }
+  .lp-botao:hover { filter: brightness(1.12); }
+  .lp-botao:disabled { opacity: 0.6; cursor: default; }
+
+  @media (min-width: 560px) {
+    .lp-form { flex-direction: row; max-width: 420px; }
+    .lp-campo { flex: 1 1 auto; }
+  }
+
+  @media (min-width: 760px) {
+    .lp-barra {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .lp-acao { width: auto; flex: 0 0 auto; }
+  }
+
+  .lp-sucesso {
+    margin: 0;
+    color: var(--acento-texto);
+    font-weight: 600;
+    font-size: var(--fs-0);
+  }
+  .lp-erro {
+    margin: 0;
+    color: #ff6b6b;
+    font-size: var(--fs-00);
+  }
+  .lp-aviso-dev {
+    margin: 0;
+    padding: var(--sp-3);
+    border: 1px dashed var(--linha);
+    border-radius: var(--raio-sm);
+    color: var(--texto-fraco);
+    font-family: var(--f-mono);
+    font-size: var(--fs-00);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

@@ -1,27 +1,39 @@
 ---
 /**
- * SecaoUnica — E6-03. Fonte ÚNICA do markup das 3 telas (porta → catálogo →
- * detalhe). Consumida por `src/pages/index.astro` (nicho padrão) e
- * `src/pages/n/[slug].astro` (nicho da rota).
+ * SecaoUnica — E6-03. Fonte ÚNICA do markup das 3 telas. Consumida por
+ * `src/pages/index.astro` (nicho padrão) e `src/pages/n/[slug].astro`.
  *
- * ADR-008 Fase 0:
- *   #tela-entrada  → PortaCatalogo (proposta + organização + mosaico)
- *   #tela-vitrine  → Bloco 2a "Em alta" (se ≥ 5 produtos) + uma TrilhaProdutos
- *                    por categoria efetiva + GradeCatalogo (2c) + BlocoInformacoes
- *   #tela-detalhe  → uma <article id="produto-<sku>"> por produto (E5)
+ * Reconstrução ao modelo dos mockups (main_inicial → catalogo_categoria_nincho →
+ * selecao_apresentacao produto), mapeada na máquina de telas de E6-02:
  *
- * Sem `<script>` — os scripts client são carregados por Base.astro (E6-02).
- * Sem JS: as 3 telas ficam empilhadas e navegáveis por âncora (RF-16).
+ *   #tela-entrada  → Hero (painel + onda) + uma seção do corpo por categoria
+ *                    (banner largo + grade 6-col + divisória). CTA do Hero
+ *                    ("Ver catálogo") → #tela-vitrine.
+ *   #tela-vitrine  → GradeCatalogo (banner --acento full-width + grade 4-col
+ *                    deslocada). Cada card → #tela-detalhe.
+ *   #tela-detalhe  → um <article id="produto-<sku>"> por produto (topbar/nav,
+ *                    grid 3-col, features, categorias, rodapé).
+ *
+ * Sem `<script>` — carregados por Base.astro (E6-02). Sem JS as 3 telas ficam
+ * empilhadas e navegáveis por âncora (RF-16). Âncoras `#cat-<id>` (seções da
+ * entrada) e `#produto-<sku>` preservadas.
  */
-import type { Nicho, Produto } from '../data/tipos';
-import {
-  resolverCategorias,
-  produtosPorCategoria,
-} from '../lib/catalogo/resolver';
-import PortaCatalogo from './Porta/PortaCatalogo.astro';
+import type { Nicho } from '../data/tipos';
+import { obterSessoesInicial, produtosRelacionados } from '../lib/catalogo/resolver';
+import Cabecalho from './Cabecalho/Cabecalho.astro';
+import Hero from './Hero/Hero.astro';
+import SecaoIndice from './Continuacao/SecaoIndice.astro';
+import SecaoDegraus from './Continuacao/SecaoDegraus.astro';
+import SecaoContato from './Continuacao/SecaoContato.astro';
+import CardsVidro from './Glass/CardsVidro.astro';
+import SigaTikTok from './Social/SigaTikTok.astro';
+import GaleriaTikTok from './Social/GaleriaTikTok.astro';
+import Faq from './Faq/Faq.astro';
+import ListaPrioridade from './ListaPrioridade/ListaPrioridade.astro';
+import Rodape from './Rodape/Rodape.astro';
 import TrilhaProdutos from './Vitrine/TrilhaProdutos.astro';
+import LegendaStreetwear from './Efeitos/LegendaStreetwear.astro';
 import GradeCatalogo from './GradeCatalogo/GradeCatalogo.astro';
-import BlocoInformacoes from './Info/BlocoInformacoes.astro';
 import DetalheProduto from './Detalhe/DetalheProduto.astro';
 
 interface Props {
@@ -29,70 +41,74 @@ interface Props {
 }
 
 const { nicho } = Astro.props;
-
-const cats = resolverCategorias(nicho, 'a');
-const porCat = produtosPorCategoria(nicho, 'a');
-
-/**
- * Bloco 2a "Em alta" — [AUTO-DECISION] D-12. `destaque:true` primeiro, depois
- * `prioridade` desc, desempate estável; cap 6. Não renderiza se o nicho tem
- * <= 4 produtos (redundante com a grade — D-13). Cálculo INLINE (resolver.ts
- * fica intacto na Fase 0). TODO(D-12): dono pode ajustar o corte.
- */
-const MAX_EM_ALTA = 6;
-const MIN_NICHO_PARA_EM_ALTA = 5;
-function emAlta(n: Nicho): Produto[] {
-  if (n.produtos.length < MIN_NICHO_PARA_EM_ALTA) return [];
-  return n.produtos
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => {
-      const da = a.p.destaque === true ? 0 : 1;
-      const db = b.p.destaque === true ? 0 : 1;
-      if (da !== db) return da - db;
-      const pr = (b.p.prioridade ?? 50) - (a.p.prioridade ?? 50);
-      if (pr !== 0) return pr;
-      return a.i - b.i;
-    })
-    .slice(0, MAX_EM_ALTA)
-    .map((x) => x.p);
-}
-const destaques = emAlta(nicho);
+const sessoesInicial = obterSessoesInicial(nicho);
 ---
+<Cabecalho nicho={nicho} />
 <div id="app" data-tela="entrada">
+  <!-- ===== TELA 1 — inicial (main_inicial): hero + onda + 6 seções da vitrine ===== -->
   <section id="tela-entrada" class="tela">
-    <PortaCatalogo nicho={nicho} />
-  </section>
+    <Hero nicho={nicho} />
+    {/* ARQUIVADO: da faixa de 2 banners logo abaixo da Hero até o fim do
+         flowing menu de baixo — CardsDuplos, FlowingMenuDivulgacao, legenda
+         "Destaques da semana", TresCardsInclinados e FlowingMenuCategorias
+         (components/_arquivo/, ver LEIAME.md lá). No lugar entram as 3 seções
+         da referência HAUS (design-systems/hero-poster-haus/): painel claro,
+         degraus dos nichos e painel de contato — só com slots, sem imagem. */}
+    <SecaoIndice />
+    <SecaoDegraus nicho={nicho} />
+    <SecaoContato />
+    <LegendaStreetwear
+      texto="Bastidores em vídeo"
+      espacoCima="clamp(56px, 10vw, 112px)"
+      fonte="'Montserrat', sans-serif"
+      peso="700"
+      caixaAlta
+    />
+    <CardsVidro />
 
-  <section id="tela-vitrine" class="tela">
-    {destaques.length > 0 && (
-      <TrilhaProdutos titulo="Em alta" produtos={destaques} slug={nicho.slug} />
-    )}
-
-    {cats.map((cat) => (
-      <TrilhaProdutos
-        id={`cat-${cat.id}`}
-        titulo={cat.rotulo}
-        kicker={cat.kicker}
-        descricao={cat.descricao}
-        produtos={porCat.get(cat.id) ?? []}
-        slug={nicho.slug}
-      />
+    <LegendaStreetwear texto="Pra você garimpar" espacoBaixo="clamp(16px, 3vw, 32px)" />
+    {sessoesInicial.map((sessao, index) => (
+      sessao.produtos.length > 0 && (
+        <TrilhaProdutos
+          id={`secao-${sessao.id}`}
+          titulo={sessao.titulo}
+          kicker={sessao.kicker}
+          descricao={sessao.descricao}
+          produtos={sessao.produtos}
+          slug={nicho.slug}
+          primeira={index === 0}
+        />
+      )
     ))}
 
-    <GradeCatalogo nicho={nicho} />
-    <BlocoInformacoes nicho={nicho} />
+    <SigaTikTok />
+    <GaleriaTikTok />
+    <Faq />
+    <ListaPrioridade />
+    <Rodape nicho={nicho} sessoesInicial={sessoesInicial} />
   </section>
 
+  <!-- ===== TELA 2 — catálogo por categoria/nicho (catalogo_categoria_nincho) ===== -->
+  <section id="tela-vitrine" class="tela">
+    <GradeCatalogo nicho={nicho} />
+  </section>
+
+  <!-- ===== TELA 3 — apresentação do produto (selecao_apresentacao produto) ===== -->
   <section id="tela-detalhe" class="tela">
     {nicho.produtos.map((p) => (
       <article id={`produto-${p.sku}`} class="detalhe-wrap" data-sku={p.sku}>
-        <DetalheProduto produto={p} slug={nicho.slug} cta={nicho.cta} />
+        <DetalheProduto
+          produto={p}
+          slug={nicho.slug}
+          cta={nicho.cta}
+          relacionados={produtosRelacionados(nicho, p)}
+        />
       </article>
     ))}
   </section>
 </div>
 <style>
   /* Nenhuma regra oculta `.tela` — isso é E6-02 (sob `html.js`). */
-  .tela { margin-block: var(--sp-8); }
+  .tela { margin-block: 0; }
   .detalhe-wrap { margin-block: var(--sp-8); }
 </style>

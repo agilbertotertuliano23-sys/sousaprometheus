@@ -1,0 +1,202 @@
+---
+/**
+ * Faq — seção de perguntas frequentes gerais do catálogo (não confundir com
+ * o bloco `faq` do REGISTRY de apresentação por produto, que é outra coisa:
+ * ADR-007/E5-03, ainda não implementado). Esta é fixa, uma por página,
+ * penúltima seção de `#tela-entrada` (antes de ListaPrioridade).
+ *
+ * Layout trocado pra referência Relume "Faq6" colada pelo dono: título
+ * grande + descrição + botão à esquerda (botão estático, sem destino —
+ * pedido explícito: "implemente o modelo fielmente e deixe os botões
+ * estáticos", o site não tem fluxo de contato direto), lista de perguntas
+ * com bordas à direita, ícone "+" que gira 45° e vira "×" na pergunta
+ * aberta. Sem cartão claro (isso era da referência anterior) — usa os
+ * tokens de tema escuro do resto do site (`--texto`/`--superficie`).
+ *
+ * Acordeão via <details>/<summary> nativo — funciona sem JS (mesmo
+ * princípio de progressive enhancement das 3 telas, RF-16).
+ *
+ * Perguntas em rascunho genérico (pedido do dono: "redija um rascunho
+ * genérico agora, ajusto depois") — revisar antes de publicar.
+ */
+const perguntas = [
+  {
+    pergunta: 'Eu compro direto aqui no site?',
+    resposta:
+      'Não. Aqui é uma vitrine — você escolhe o produto e o botão de cada card leva pra loja ou parceiro onde a compra é finalizada.',
+  },
+  {
+    pergunta: 'Os preços e o estoque mostrados aqui são sempre atuais?',
+    resposta:
+      'A gente atualiza com frequência, mas quem controla preço e estoque em tempo real é a loja de destino — confirme os valores lá antes de fechar.',
+  },
+  {
+    pergunta: 'Qual o prazo de entrega?',
+    resposta:
+      'Depende da loja/parceiro que vende o produto — o prazo aparece no checkout de destino, depois que você escolhe o item aqui.',
+  },
+  {
+    pergunta: 'Posso trocar ou devolver um produto?',
+    resposta:
+      'Troca e devolução seguem a política da loja onde a compra foi feita, não a nossa — verifique os termos dela antes de comprar.',
+  },
+  {
+    pergunta: 'Quais formas de pagamento são aceitas?',
+    resposta:
+      'Isso também varia por loja de destino: Pix, cartão, boleto etc. As opções aparecem no checkout de cada parceiro.',
+  },
+  {
+    pergunta: 'Por que às vezes um produto desaparece ou muda de preço?',
+    resposta:
+      'Porque o estoque e o preço são da loja parceira, não nossos — quando ela atualiza, o que aparece aqui pode ficar desatualizado por um tempo curto.',
+  },
+];
+---
+<section class="faq" id="faq">
+  <div class="faq-grade">
+    <div class="faq-intro">
+      <h2 class="faq-titulo">FAQs</h2>
+      <p class="faq-descricao">
+        Tudo que você precisa saber antes de escolher um produto aqui na vitrine.
+      </p>
+      <button class="faq-botao" type="button">Contato</button>
+    </div>
+
+    <ul class="faq-lista">
+      {perguntas.map((item, i) => (
+        <li>
+          <details class="faq-item" open={i === 0}>
+            <summary class="faq-pergunta">
+              <span>{item.pergunta}</span>
+              <span class="faq-icone" aria-hidden="true"></span>
+            </summary>
+            <p class="faq-resposta">{item.resposta}</p>
+          </details>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* Sem `.faq-divisor` (linha antes da seção) — pedido: "retire a linha
+     tambem antes de faq ... e deixe proximas as sessoes". Padding-top
+     também caiu (era clamp(64px,9vw,110px), incluía o respiro que a linha
+     removida deixava) pra encostar mais perto de GaleriaTikTok acima. */
+  .faq {
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: clamp(32px, 5vw, 56px) 5vw clamp(40px, 6vw, 64px);
+  }
+
+  .faq-grade {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(32px, 6vw, 56px);
+  }
+
+  .faq-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+  .faq-titulo {
+    margin: 0;
+    color: var(--texto);
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(2.5rem, 1.9rem + 3vw, 4.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+  }
+  .faq-descricao {
+    margin: 0;
+    color: var(--texto-fraco);
+    font-size: var(--fs-0);
+    line-height: var(--lh-normal);
+  }
+  .faq-botao {
+    min-height: var(--toque-min);
+    padding: var(--sp-3) var(--sp-6);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-sm);
+    background: transparent;
+    color: var(--texto);
+    font-family: var(--f-corpo);
+    font-weight: 600;
+    font-size: var(--fs-0);
+    cursor: default;
+  }
+
+  .faq-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .faq-item {
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-sm);
+    overflow: hidden;
+  }
+
+  .faq-pergunta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+    min-height: var(--toque-min);
+    cursor: pointer;
+    color: var(--texto);
+    font-family: var(--f-corpo);
+    font-weight: 700;
+    font-size: var(--fs-0);
+    list-style: none;
+  }
+  /* Remove o marcador nativo (triângulo) do <summary>, só o + customizado. */
+  .faq-pergunta::-webkit-details-marker { display: none; }
+  .faq-pergunta::marker { content: ''; }
+
+  .faq-icone {
+    flex: 0 0 auto;
+    position: relative;
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+  }
+  .faq-icone::before,
+  .faq-icone::after {
+    content: '';
+    position: absolute;
+    background: var(--texto);
+    border-radius: 999px;
+  }
+  .faq-icone::before { inset-inline: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+  .faq-icone::after { inset-block: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+  /* Gira o "+" em 45° -> vira "×" na pergunta aberta (igual à referência). */
+  .faq-item[open] .faq-icone { transform: rotate(45deg); }
+
+  .faq-resposta {
+    margin: 0;
+    padding: 0 var(--sp-4) var(--sp-4);
+    color: var(--texto-fraco);
+    font-size: var(--fs-0);
+    line-height: var(--lh-normal);
+  }
+
+  /* Baixei o breakpoint pra 480px (mesmo teto de `--largura-pagina`) —
+     pedido: "quero que ajuste o nome faq de um lado e as perguntas do
+     outro" já no celular, não só a partir de tablet. */
+  @media (min-width: 480px) {
+    .faq-grade {
+      grid-template-columns: 0.75fr 1fr;
+      align-items: start;
+    }
+  }
+</style>

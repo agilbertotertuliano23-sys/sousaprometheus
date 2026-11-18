@@ -1,0 +1,118 @@
+---
+/**
+ * FlowingMenuCategorias — outra metade do antigo `FlowingMenuSecao` (ver
+ * `FlowingMenuDivulgacao` pra primeira metade): os 5 itens de categoria
+ * (Streetwear/Gym/Y2K/Old Money/Minimal) do menu fluido, entrando DEPOIS de
+ * `TresCardsInclinados` — ver ordem em `SecaoUnica.astro`.
+ *
+ * Cores do menu = `Categoria.cor` de cada categoria (mesma fonte que já
+ * recolore --acento/o botão "Abrir catálogo"/PixelFundoHero ao navegar no
+ * carrossel da Hero, ver `Hero.astro`/`PixelFundoHero.tsx`) — pedido:
+ * "altere as cores dos menus para as cores personalizadas no efeito do
+ * botão abrir catálogo". Nenhum hex de seção duplicado aqui; só o par
+ * bg/text de contraste (decisão visual, não dado) fica local.
+ */
+import type { Nicho } from '../../../data/tipos';
+import { resolverCategorias } from '../../../lib/catalogo/resolver';
+import FlowingMenu from './FlowingMenu.tsx';
+import streetwearUrl from '../../../assets/hero/streetwear-banner.jpg?url';
+import gymUrl from '../../../assets/hero/gym-banner.jpg?url';
+import y2kUrl from '../../../assets/hero/y2k-banner.jpg?url';
+import oldMoneyUrl from '../../../assets/hero/old-money-banner.jpg?url';
+import minimalUrl from '../../../assets/hero/minimal-banner.jpg?url';
+
+interface Props {
+  nicho: Nicho;
+}
+
+const { nicho } = Astro.props;
+const corPorId = new Map(
+  resolverCategorias(nicho, 'a').map((cat) => [cat.id, cat.cor ?? nicho.acento] as const),
+);
+
+// Par de contraste por seção (branco/escuro) — decisão visual fixa, calculada
+// uma vez sobre o tom de cada `Categoria.cor` (WCAG): Y2K/Minimal são claras
+// o bastante pra pedir texto escuro; as demais seguem com texto branco.
+const SECAO_CORES: Record<string, { bg: string; text: string }> = {
+  Streetwear: { bg: corPorId.get('streetwear') ?? nicho.acento, text: '#ffffff' },
+  Gym: { bg: corPorId.get('gym') ?? nicho.acento, text: '#ffffff' },
+  Y2K: { bg: corPorId.get('y2k') ?? nicho.acento, text: '#0a0b0c' },
+  'Old Money': { bg: corPorId.get('old-money') ?? nicho.acento, text: '#ffffff' },
+  Minimal: { bg: corPorId.get('minimal') ?? nicho.acento, text: '#0a0b0c' },
+};
+
+const SECAO_FONTES: Record<string, string> = {
+  Streetwear: "'Bigerside', sans-serif",
+  Gym: "'Bebas Neue', sans-serif",
+  Y2K: "'Audiowide', sans-serif",
+  'Old Money': "'Bodoni Moda', serif",
+  Minimal: "'Cormorant Garamond', serif",
+};
+
+const items = [
+  {
+    link: '#cat-streetwear',
+    text: 'Streetwear',
+    image: streetwearUrl,
+    fontFamily: SECAO_FONTES.Streetwear,
+    marqueeBgColor: SECAO_CORES.Streetwear.bg,
+    marqueeTextColor: SECAO_CORES.Streetwear.text,
+  },
+  {
+    link: '#cat-gym',
+    text: 'Gym',
+    image: gymUrl,
+    fontFamily: SECAO_FONTES.Gym,
+    marqueeBgColor: SECAO_CORES.Gym.bg,
+    marqueeTextColor: SECAO_CORES.Gym.text,
+  },
+  {
+    link: '#cat-y2k',
+    text: 'Y2K',
+    image: y2kUrl,
+    fontFamily: SECAO_FONTES.Y2K,
+    marqueeBgColor: SECAO_CORES.Y2K.bg,
+    marqueeTextColor: SECAO_CORES.Y2K.text,
+  },
+  {
+    link: '#cat-old-money',
+    text: 'Old Money',
+    image: oldMoneyUrl,
+    fontFamily: SECAO_FONTES['Old Money'],
+    marqueeBgColor: SECAO_CORES['Old Money'].bg,
+    marqueeTextColor: SECAO_CORES['Old Money'].text,
+  },
+  {
+    link: '#cat-minimal',
+    text: 'Minimal',
+    image: minimalUrl,
+    fontFamily: SECAO_FONTES.Minimal,
+    marqueeBgColor: SECAO_CORES.Minimal.bg,
+    marqueeTextColor: SECAO_CORES.Minimal.text,
+  },
+];
+---
+<section class="flowing-secao flowing-secao--categorias">
+  <FlowingMenu
+    client:visible
+    items={items}
+    speed={14}
+    textColor="var(--texto)"
+    bgColor="var(--bg)"
+    borderColor="var(--linha)"
+    interativo
+  />
+</section>
+
+<style>
+  .flowing-secao {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: clamp(10px, 3vw, 32px);
+  }
+  /* 5 dos 6 itens originais — mesma altura proporcional que essas linhas
+     tinham dentro do menu de 6 itens original (340-500px * 5/6). */
+  .flowing-secao--categorias {
+    height: clamp(280px, 36.7vw, 415px);
+  }
+</style>

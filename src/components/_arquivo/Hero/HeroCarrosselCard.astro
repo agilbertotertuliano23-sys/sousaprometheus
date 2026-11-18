@@ -1,0 +1,623 @@
+---
+/**
+ * HeroCarrosselCard — o card do carrossel de categorias da Hero, agora em
+ * componente próprio porque passou a existir em 2 lugares (pedido: "faca
+ * outro card ao centro da hera, duplique o modelo da parte inferior
+ * direita"): um no canto inferior-direito (`driver=false`) e outro no
+ * centro (`driver=true`).
+ *
+ * Visual: componente Uiverse.io by MuhammadHasann (círculo que expande
+ * virando retângulo no hover), fornecido pelo usuário só em CSS — prefixo
+ * `uiv-` marca a origem. Adaptado: o "product-image" original (uma foto de
+ * produto) virou o `.hero-carrossel-wrap` de verdade (trilha de
+ * categorias + setas + dots).
+ *
+ * `driver` decide 2 coisas (pedido: "configure só ele [o do centro] pra
+ * mudar as seções... deixe o do centro ativo"):
+ *  - o botão dentro do `.uiv-detail`: "Ver item" (aponta pro card ativo,
+ *    href sincronizado por `Hero.astro`) no não-driver; "Abrir catálogo"
+ *    (link fixo pro catálogo) no driver — pedido: "troque o botao ver
+ *    itens" + "mova o botao de entrar em catalogo junto ao do centro".
+ *  - `data-hero-driver` no `.hero-carrossel-wrap`, lido pelo script de
+ *    `Hero.astro`: só o driver recolore --acento/troca o fundo da
+ *    hero/troca o wordmark grande ao navegar; o não-driver continua
+ *    navegável (troca miniatura + rótulo + "Ver item"), mas não mexe mais
+ *    no resto da página.
+ *
+ * Visual REFEITO no estilo "editorial minimalista" (mesmo sistema do
+ * MiniProduto e dos cards de vídeo — tokens `--ed-*` em global.css). O
+ * `<style>` abaixo é novo; o DOM e as classes seguem os de antes de
+ * propósito: o script de `Hero.astro` procura `.hero-carrossel-wrap`,
+ * `.uiv-label`, `.hero-card-cta`, `[data-hero-seta]`, `.hero-dots span` etc.
+ */
+import type { Categoria } from '../../../data/tipos';
+
+interface Props {
+  menores: Categoria[];
+  temaPorCategoria: Record<string, { fundo: string; icone?: string }>;
+  cardCelofaneUrl: string;
+  iconeGloboUrl: string;
+  fontesPorSecao: Record<string, { titulo: string; texto: string }>;
+  nichoAcento: string;
+  dots: number;
+  driver: boolean;
+}
+
+const {
+  menores,
+  temaPorCategoria,
+  cardCelofaneUrl,
+  iconeGloboUrl,
+  fontesPorSecao,
+  nichoAcento,
+  dots,
+  driver,
+} = Astro.props;
+
+// Círculo de repouso (canto): mostra o ÍCONE da categoria ativa (não a
+// foto do modelo — essa só aparece no hover, na trilha) — pedido:
+// "isso linkando roupa que estava passando com o modelo do expositor da
+// caixa": o script de `Hero.astro` troca este ícone junto quando o
+// carrossel muda de categoria, então o que aparece pequeno (ícone) sempre
+// corresponde ao que o hover revela (foto real com modelo).
+const catInicial = menores[0];
+const ehLinhaInicial = catInicial?.id === 'minimal';
+const iconeInicialCirculo = ehLinhaInicial
+  ? ''
+  : (temaPorCategoria[catInicial?.id ?? '']?.icone ?? iconeGloboUrl);
+---
+<div class:list={['uiv-card', { 'uiv-card--aberto': driver }]}>
+  <div class="uiv-container-image">
+    <img
+      class="uiv-image-circle"
+      src={iconeInicialCirculo || iconeGloboUrl}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+      style={iconeInicialCirculo ? '' : 'display:none'}
+    />
+  </div>
+
+  <div class="uiv-content">
+    <div class="uiv-detail">
+      {!driver && <span class="uiv-label">Streetwear</span>}
+      {driver ? (
+        <a
+          class="hero-card-cta"
+          href={catInicial?.id ? `#cat-${catInicial.id}` : '#tela-vitrine'}
+          data-ir="vitrine"
+          data-cat={catInicial?.id}
+        >
+          <span class="hero-card-label">Abrir catálogo</span>
+          <span class="hero-card-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+          </span>
+        </a>
+      ) : (
+        <a
+          class="hero-card-item"
+          href={menores[0]?.id ? `#cat-${menores[0].id}` : '#tela-vitrine'}
+          data-ir="categoria"
+          data-hero-ver-item
+        >
+          <span class="hero-card-label">Ver item</span>
+          <span class="hero-card-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>
+          </span>
+        </a>
+      )}
+    </div>
+
+    <div class="uiv-product-image">
+      <div class="uiv-box-image">
+        <div class="hero-carrossel-wrap" data-total={menores.length} data-hero-driver={driver ? 'true' : ''}>
+          <ul class="hero-carrossel">
+            {menores.map((cat) => {
+              const estilo = cat.cardEstilo ?? 'padrao';
+              const tema = temaPorCategoria[cat.id];
+              // Logo da categoria (só usado/visível no card driver/centro,
+              // ver `.uiv-card--aberto .hero-card-logo*` no CSS): "minimal"
+              // vira linha, quem não declara `icone` (sem-tema + gym, sem
+              // asset próprio) cai no globo padrão.
+              const ehLinha = cat.id === 'minimal';
+              const iconeAlvo = ehLinha ? '' : (tema?.icone ?? iconeGloboUrl);
+              const fontes = fontesPorSecao[cat.rotulo];
+              return (
+                <li>
+                  <a
+                    class="hero-card-alt"
+                    href={`#cat-${cat.id}`}
+                    data-ir="categoria"
+                    data-categoria={cat.id}
+                    data-estilo={estilo}
+                    data-hero-fundo={tema?.fundo ?? ''}
+                    data-titulo-texto={tema ? cat.rotulo : ''}
+                    data-hero-fonte-titulo={fontes?.titulo ?? ''}
+                    data-hero-fonte-texto={fontes?.texto ?? ''}
+                    style={`--cat-cor:${cat.cor ?? nichoAcento}`}
+                  >
+                    {estilo === 'padrao' && (
+                      <>
+                        <span class="hero-card-tint" aria-hidden="true"></span>
+                        {/* Foto REAL da categoria (com modelo) no hover — não mais
+                            um placeholder fixo. Categorias sem tema (básicos/
+                            destaques/kits, sem foto própria) caem na textura
+                            celofane genérica. */}
+                        <img class="hero-card-textura" src={tema?.fundo ?? cardCelofaneUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" />
+                      </>
+                    )}
+                    {estilo === 'scanner' && (
+                      <>
+                        <span class="hero-card-ray" aria-hidden="true"></span>
+                        <span class="hero-card-dot" aria-hidden="true"></span>
+                        <span class="hero-card-line hero-card-line--top" aria-hidden="true"></span>
+                        <span class="hero-card-line hero-card-line--bottom" aria-hidden="true"></span>
+                        <span class="hero-card-line hero-card-line--left" aria-hidden="true"></span>
+                        <span class="hero-card-line hero-card-line--right" aria-hidden="true"></span>
+                      </>
+                    )}
+                    {ehLinha ? (
+                      <span class="hero-card-logo-linha" aria-hidden="true"></span>
+                    ) : (
+                      <img class="hero-card-logo" src={iconeAlvo} alt="" aria-hidden="true" loading="lazy" decoding="async" />
+                    )}
+                    <span class="hero-card-rotulo rotulo">{cat.rotulo}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+
+          {menores.length > 1 && (
+            <button type="button" class="hero-seta hero-seta-prev" data-hero-seta="prev" aria-label="Produto anterior">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+          )}
+          {menores.length > 1 && (
+            <button type="button" class="hero-seta hero-seta-next" data-hero-seta="next" aria-label="Próximo produto">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+          )}
+
+          <div class="hero-dots" aria-hidden="true">
+            {Array.from({ length: dots }).map((_, i) => (
+              <span class:list={{ ativa: i === 0 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ===== Card "editorial minimalista" — mesmo sistema do MiniProduto e dos
+     cards de vídeo (tokens `--ed-*` em global.css): cantos retos, fio fino no
+     lugar de borda/sombra, sem blur, rótulos pequenos em caixa alta com
+     tracking largo. A cor da categoria (--acento) só aparece no sublinhado do
+     hover. O DOM/classes são os de antes (o script de `Hero.astro` depende
+     deles) — só o visual foi refeito. ===== */
+  .uiv-card {
+    position: relative;
+    background: transparent;
+    width: clamp(140px, 14vw, 175px);
+    height: clamp(180px, 19vw, 225px);
+    border: none;
+  }
+
+  /* repouso (card do canto): retângulo de fio fino com o ícone da categoria */
+  .uiv-container-image {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.32);
+    cursor: pointer;
+    border: 1px solid var(--ed-linha-forte);
+    border-radius: 0;
+    overflow: hidden;
+    transition: all .3s ease-in-out, opacity .3s;
+    transition-delay: .6s, 0s;
+  }
+  .uiv-card:not(.uiv-card--aberto):hover .uiv-container-image {
+    opacity: 0;
+    transition-delay: 0s, .6s;
+  }
+  .uiv-card:not(.uiv-card--aberto) .uiv-image-circle {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 24%;
+    opacity: 0.9;
+  }
+
+  /* hover (card do canto): painel sólido escuro, fio fino */
+  .uiv-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #0b0b0b;
+    padding: var(--sp-3);
+    width: clamp(140px, 14vw, 175px);
+    height: clamp(180px, 19vw, 225px);
+    cursor: default;
+    border: 1px solid var(--ed-linha-forte);
+    border-radius: 0;
+    box-shadow: none;
+    visibility: hidden;
+    transition: .3s ease-in-out;
+    transition-delay: 0s;
+    z-index: 1;
+  }
+  .uiv-card:not(.uiv-card--aberto):hover .uiv-content {
+    width: clamp(230px, 23vw, 280px);
+    height: clamp(280px, 30vw, 340px);
+    visibility: visible;
+    transition-delay: .5s;
+  }
+
+  .uiv-detail {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 auto;
+    width: 100%;
+    opacity: 0;
+    transition: all .3s ease-in-out;
+    transition-delay: 0s;
+  }
+  .uiv-card:not(.uiv-card--aberto):hover .uiv-detail {
+    opacity: 1;
+    transition: 1s;
+    transition-delay: .3s;
+  }
+  .uiv-label {
+    display: block;
+    align-self: flex-start;
+    margin-bottom: var(--sp-2);
+    color: rgba(255, 255, 255, 0.72);
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: var(--ed-tracking);
+    text-transform: uppercase;
+    line-height: 1.15;
+  }
+
+  .uiv-product-image {
+    order: 1;
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+  .uiv-box-image {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(.5);
+    transition: all .5s ease-in-out;
+    transition-delay: 0s;
+  }
+  .uiv-card:not(.uiv-card--aberto):hover .uiv-box-image {
+    opacity: 1;
+    transform: scale(1);
+    transition-delay: .3s;
+  }
+  .uiv-box-image .hero-carrossel-wrap {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ===== Card "aberto" (driver, centro): sempre expandido, sem caixa —
+     só o carrossel de logos, as setas e o link "Abrir catálogo" embaixo. ===== */
+  .uiv-card--aberto {
+    width: clamp(300px, 34vw, 420px);
+    height: auto;
+  }
+  .uiv-card--aberto .uiv-container-image {
+    display: none;
+  }
+  .uiv-card--aberto .uiv-content {
+    position: static;
+    transform: none;
+    visibility: visible;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: auto;
+    padding: var(--sp-2) 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  .uiv-card--aberto .uiv-detail {
+    order: 2;
+    opacity: 1;
+    align-items: center;
+    width: auto;
+  }
+  .uiv-card--aberto .uiv-detail .hero-card-cta {
+    width: auto;
+    margin-top: 6px;
+    padding: 10px 2px 8px;
+    gap: 16px;
+    font-size: 0.68rem;
+  }
+  .uiv-card--aberto .uiv-detail .hero-card-cta .hero-card-arrow svg {
+    width: 15px;
+    height: 15px;
+  }
+  .uiv-card--aberto .uiv-product-image {
+    order: 1;
+    flex: none;
+    width: 100%;
+  }
+  .uiv-card--aberto .uiv-box-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    inset: auto;
+    height: clamp(130px, 15vw, 170px);
+    opacity: 1;
+    transform: none;
+  }
+
+  /* carrossel de LOGOS (card aberto): trilha deslizante, um logo por slide;
+     sem dots e sem barra de rolagem (arrastar/tocar e as setas continuam). */
+  .uiv-card--aberto .hero-carrossel-wrap {
+    width: 100%;
+    height: clamp(130px, 15vw, 170px);
+  }
+  .uiv-card--aberto .hero-dots {
+    display: none;
+  }
+  .uiv-card--aberto .hero-carrossel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .uiv-card--aberto .hero-carrossel::-webkit-scrollbar {
+    display: none;
+  }
+  .uiv-card--aberto .hero-card-alt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    box-shadow: none;
+  }
+  .uiv-card--aberto .hero-card-tint,
+  .uiv-card--aberto .hero-card-textura,
+  .uiv-card--aberto .hero-card-ray,
+  .uiv-card--aberto .hero-card-dot,
+  .uiv-card--aberto .hero-card-line,
+  .uiv-card--aberto .hero-card-rotulo {
+    display: none;
+  }
+  .hero-card-logo,
+  .hero-card-logo-linha {
+    display: none;
+  }
+  .uiv-card--aberto .hero-card-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform: translateY(-6px);
+  }
+  .uiv-card--aberto .hero-card-logo-linha {
+    display: block;
+    width: 50%;
+    height: 1px;
+    background: #fff;
+  }
+
+  /* ===== Links do `.uiv-detail` — "Ver item" (não-driver) / "Abrir catálogo"
+     (driver): texto em caixa alta com fio em cima e seta simples; no hover o
+     sublinhado da cor da categoria se desenha e a seta avança. ===== */
+  .uiv-detail .hero-card-item,
+  .uiv-detail .hero-card-cta {
+    position: relative;
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 9px 0 7px;
+    background: transparent;
+    color: #fff;
+    font-family: var(--ed-rotulo-fonte);
+    font-weight: 500;
+    font-size: 0.62rem;
+    line-height: 1;
+    letter-spacing: var(--ed-tracking);
+    text-transform: uppercase;
+    border: 0;
+    border-top: 1px solid var(--ed-linha);
+    border-radius: 0;
+    text-decoration: none;
+    transition: border-color 0.3s var(--ed-ease);
+  }
+  .uiv-detail .hero-card-item::after,
+  .uiv-detail .hero-card-cta::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--acento, #fff);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.4s var(--ed-ease);
+  }
+  .hero-card-label {
+    display: inline-block;
+    flex: 1 1 auto;
+    text-align: left;
+  }
+  .hero-card-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: none;
+    color: inherit;
+    transition: transform 0.3s var(--ed-ease);
+  }
+  .hero-card-arrow svg { width: 12px; height: 12px; display: block; }
+
+  .uiv-detail .hero-card-item:hover,
+  .uiv-detail .hero-card-cta:hover {
+    border-top-color: var(--ed-linha-forte);
+  }
+  .uiv-detail .hero-card-item:hover::after,
+  .uiv-detail .hero-card-cta:hover::after,
+  .uiv-detail .hero-card-item:focus-visible::after,
+  .uiv-detail .hero-card-cta:focus-visible::after {
+    transform: scaleX(1);
+  }
+  .uiv-detail .hero-card-item:hover .hero-card-arrow,
+  .uiv-detail .hero-card-cta:hover .hero-card-arrow {
+    transform: translateX(3px);
+  }
+  .uiv-detail .hero-card-item:focus-visible,
+  .uiv-detail .hero-card-cta:focus-visible {
+    outline: 1px solid var(--ed-linha-forte);
+    outline-offset: 4px;
+  }
+
+  /* ===== Carrossel de categorias (2 instâncias, uma por card). ===== */
+  .hero-carrossel-wrap { position: relative; height: 100%; display: flex; flex-direction: column; }
+  .hero-carrossel {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    overflow-x: auto;
+    align-items: stretch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hero-carrossel::-webkit-scrollbar { height: 3px; }
+  .hero-carrossel::-webkit-scrollbar-track { background: transparent; }
+  .hero-carrossel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.35); }
+  .hero-carrossel > li { flex: 0 0 100%; scroll-snap-align: start; }
+
+  /* setas: quadrado de fio fino; no hover preenche de branco */
+  html:not(.js) .hero-seta { display: none; }
+  .hero-seta {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(36px, 9vw, 42px);
+    height: clamp(36px, 9vw, 42px);
+    border: 1px solid var(--ed-linha-forte);
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s var(--ed-ease), color 0.3s var(--ed-ease), border-color 0.3s var(--ed-ease);
+  }
+  .hero-seta:hover {
+    background: #fff;
+    color: #0a0b0c;
+    border-color: #fff;
+  }
+  .hero-seta:focus-visible { outline: 1px solid #fff; outline-offset: 3px; }
+  .hero-seta svg { width: 50%; height: 50%; }
+  .hero-seta-prev { left: 4px; }
+  .hero-seta-next { right: 4px; }
+
+  /* slides (todas as categorias iguais: sem sombra, sem cantos, sem
+     enfeites dos estilos antigos "scanner"/"glass") */
+  .hero-card-alt {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: none;
+  }
+  .hero-card-alt img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-card-alt[data-estilo] {
+    border-radius: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  .hero-card-alt[data-estilo='scanner'] .hero-card-ray,
+  .hero-card-alt[data-estilo='scanner'] .hero-card-dot,
+  .hero-card-alt[data-estilo='scanner'] .hero-card-line {
+    display: none;
+  }
+
+  .hero-card-tint {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .hero-card-rotulo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: 8px 10px;
+    color: #fff;
+    font-family: var(--ed-rotulo-fonte);
+    font-size: 0.58rem;
+    font-weight: 500;
+    letter-spacing: var(--ed-tracking);
+    text-transform: uppercase;
+    text-align: left;
+    text-shadow: none;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  }
+  .hero-card-textura {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.94) contrast(1.05);
+  }
+
+  /* posição: risquinhos no lugar de bolinhas */
+  .hero-dots {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: clamp(-20px, -3vw, -14px);
+    display: flex;
+    gap: 5px;
+  }
+  .hero-dots span { width: 14px; height: 1px; background: rgba(255, 255, 255, 0.35); }
+  .hero-dots span.ativa { background: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-seta, .hero-card-arrow,
+    .uiv-detail .hero-card-item, .uiv-detail .hero-card-cta,
+    .uiv-detail .hero-card-item::after, .uiv-detail .hero-card-cta::after { transition: none; }
+  }
+</style>

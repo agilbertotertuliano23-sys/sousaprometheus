@@ -1,0 +1,159 @@
+---
+/**
+ * GaleriaTikTok — seção logo abaixo de `SigaTikTok.astro`. Ordem atual:
+ *   1. um ESPAÇO (respiro);
+ *   2. os CONTADORES de seguidores e curtidas (`ContadoresTikTok.tsx`, dígitos
+ *      que rolam) — pedido: "na sessao baixo de um espaço e la faca contadores
+ *      de numeros de curtidas, seguidores";
+ *   3. a grade de CARDS (Masonry, GSAP) de thumbnails de vídeo do TikTok, só os
+ *      cards, sem efeitos — pedido: "quero que a sessao abaixo das metricas
+ *      ainda tenham as sessoes de cards".
+ * As mesmas imagens também vão pra parede de fundo do `SigaTikTok.astro`.
+ *
+ * Histórico: a grade nasceu como fundo do card 3D, virou seção própria, perdeu
+ * `GradualBlur` e os efeitos de hover (zoom/desfoque/troca de cor: props do
+ * `Masonry` em `false`); a entrada dos cards (`animateFrom`) fica porque é ela
+ * que posiciona a grade.
+ *
+ * As 24 imagens (`src/assets/masonry/thumb-01..24.png`) vieram de dois
+ * recortes pixel-perfeitos de duas telas de referência (grade 6×2 de vídeos do
+ * TikTok), extraídos com sharp — cada thumb já é um tile individual real.
+ * O 25º item repete `thumb01` (pedido: "complete a ultima linha com mais uma
+ * imagem"); na grade de 5 colunas (>=1500px) ele cai na última posição.
+ * Cards de tamanho uniforme: `uniformAspect` = proporção real das imagens
+ * (314x415), altura calculada da largura da coluna (responsivo).
+ *
+ * Mantém o `id="galeria-tiktok"`: os cards de vídeo (`CardsVidro.astro`) rolam
+ * até ele. Contadores: valores = os do card 3D (26,4 mil / 11,5 milhões) —
+ * placeholders; "." é o marcador decimal das `casas`, o Counter mostra vírgula.
+ */
+import Masonry from '../Efeitos/Masonry';
+import ContadoresTikTok from './ContadoresTikTok';
+import thumb01 from '../../assets/masonry/thumb-01.png?url';
+import thumb02 from '../../assets/masonry/thumb-02.png?url';
+import thumb03 from '../../assets/masonry/thumb-03.png?url';
+import thumb04 from '../../assets/masonry/thumb-04.png?url';
+import thumb05 from '../../assets/masonry/thumb-05.png?url';
+import thumb06 from '../../assets/masonry/thumb-06.png?url';
+import thumb07 from '../../assets/masonry/thumb-07.png?url';
+import thumb08 from '../../assets/masonry/thumb-08.png?url';
+import thumb09 from '../../assets/masonry/thumb-09.png?url';
+import thumb10 from '../../assets/masonry/thumb-10.png?url';
+import thumb11 from '../../assets/masonry/thumb-11.png?url';
+import thumb12 from '../../assets/masonry/thumb-12.png?url';
+import thumb13 from '../../assets/masonry/thumb-13.png?url';
+import thumb14 from '../../assets/masonry/thumb-14.png?url';
+import thumb15 from '../../assets/masonry/thumb-15.png?url';
+import thumb16 from '../../assets/masonry/thumb-16.png?url';
+import thumb17 from '../../assets/masonry/thumb-17.png?url';
+import thumb18 from '../../assets/masonry/thumb-18.png?url';
+import thumb19 from '../../assets/masonry/thumb-19.png?url';
+import thumb20 from '../../assets/masonry/thumb-20.png?url';
+import thumb21 from '../../assets/masonry/thumb-21.png?url';
+import thumb22 from '../../assets/masonry/thumb-22.png?url';
+import thumb23 from '../../assets/masonry/thumb-23.png?url';
+import thumb24 from '../../assets/masonry/thumb-24.png?url';
+
+const link = 'https://www.tiktok.com/@sousayl';
+
+const contadores = [
+  { valor: 26.4, casas: [10, 1, '.', 0.1] as (number | '.')[], sufixo: 'mil', rotulo: 'Seguidores' },
+  { valor: 11.5, casas: [10, 1, '.', 0.1] as (number | '.')[], sufixo: 'milhões', rotulo: 'Curtidas' },
+];
+
+const thumbs = [
+  thumb01, thumb02, thumb03, thumb04, thumb05, thumb06,
+  thumb07, thumb08, thumb09, thumb10, thumb11, thumb12,
+  thumb13, thumb14, thumb15, thumb16, thumb17, thumb18,
+  thumb19, thumb20, thumb21, thumb22, thumb23, thumb24,
+  thumb01,
+];
+const PROPORCAO_THUMB = 314 / 415;
+const itensMasonry = thumbs.map((img, i) => ({
+  id: `tt-thumb-${i + 1}`,
+  img,
+  url: link,
+}));
+---
+<section class="galeria-tiktok" id="galeria-tiktok">
+  <div class="galeria-tiktok-contadores">
+    <ContadoresTikTok client:visible itens={contadores} />
+  </div>
+
+  <div class="galeria-tiktok-grade">
+    <Masonry
+      client:visible
+      items={itensMasonry}
+      animateFrom="bottom"
+      scaleOnHover={false}
+      blurToFocus={false}
+      colorShiftOnHover={false}
+      uniformAspect={PROPORCAO_THUMB}
+    />
+  </div>
+</section>
+
+<style>
+  .galeria-tiktok {
+    --tt-cyan: #25f4ee;
+    --tt-pink: #fe2c55;
+    /* Mesma largura/centralização das outras seções do corpo. */
+    --w: min(100vw, 1440px);
+    width: var(--w);
+    margin-inline: calc((100% - var(--w)) / 2);
+    padding: 0 5vw clamp(48px, 8vw, 88px);
+  }
+
+  /* o "espaço" antes dos contadores = padding de cima desta faixa */
+  .galeria-tiktok-contadores {
+    display: flex;
+    justify-content: center;
+    padding-block: clamp(72px, 11vw, 150px) clamp(56px, 8vw, 110px);
+  }
+  .galeria-tiktok-contadores :global(astro-island) {
+    display: block;
+  }
+
+  .galeria-tiktok-grade {
+    position: relative;
+    width: 100%;
+    min-height: clamp(420px, 55vw, 640px);
+  }
+
+  /* Markup interno do Masonry (React island, `client:visible`) — o escopo
+     de estilo do Astro não alcança o DOM renderizado pelo React, por isso
+     `:global`. */
+  :global(.masonry-grid) {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  :global(.masonry-item) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+
+  :global(.masonry-item-inner) {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    border-radius: var(--card-raio);
+    overflow: hidden;
+  }
+
+  :global(.masonry-item .color-overlay) {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--card-raio);
+    background: linear-gradient(135deg, var(--tt-pink) 0%, var(--tt-cyan) 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>

@@ -1,0 +1,252 @@
+---
+/**
+ * /intro-sousayl — MODELO de entrada de site para a marca SOUSAYL, baseado na
+ * introdução do case "Beats by Dre" da Basic Agency
+ * (basicagency.com/case-studies/beats-by-dre-branded-ecommerce-website).
+ *
+ * O que foi lido no CÓDIGO daquele site (HTML/CSS servidos) e reproduzido aqui:
+ *  - o nome/título em CAIXA ALTA, centralizado, gigante, bold (700), com
+ *    `letter-spacing: -0.05em` e `line-height: 0.9`;
+ *  - logo abaixo, uma linha de categorias pequena, caixa alta, bold, separada
+ *    por vírgulas, centralizada;
+ *  - o asset em largura total é revelado por MÁSCARA DUPLA (`intro-asset-
+ *    wrapper`): a máscara (overflow:hidden) sobe de translateY(100%) a 0 e o
+ *    conteúdo de dentro faz o contrário, de translateY(-100%) + scale(1.25) a
+ *    normal — 1s, cubic-bezier(0.72, 0, 0.28, 1), com atraso inicial. Vira uma
+ *    "janela" que abre de baixo pra cima enquanto a imagem assenta (zoom-out);
+ *  - sem animação quando o usuário pede movimento reduzido.
+ * NÃO verificado no original (inferência): a entrada letra a letra do título e
+ * o traçado da linha da barra de meta — feitos aqui no mesmo tempo/curva.
+ *
+ * Adaptado à marca: preto quente + cobre (do banner), título vazado como a
+ * marca, Montserrat. Página avulsa (sem Base.astro, fora do sitemap) pra você
+ * ver o modelo sem mexer no site; o CTA leva pra `/`.
+ * Os tokens de cor/tempo estão no topo do <style> (`--sy-*`).
+ */
+import { Image } from 'astro:assets';
+import banner from '../assets/cards-duplos/sousayl-banner.jpg';
+
+const NOME = 'SOUSAYL';
+const categorias = ['Streetwear', 'Gym', 'Y2K', 'Old Money', 'Minimal'];
+---
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <title>SOUSAYL — Mais que uma loja. Um hub de boas escolhas.</title>
+    <meta name="description" content="Mais que uma loja. Um hub de boas escolhas. Descubra. Escolha. Aproveite." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- 1 família só, bloqueante de propósito: o título gigante não pode piscar em fonte de sistema -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="sy-topo">
+      <span class="sy-mono">Hub de boas escolhas</span>
+      <a class="sy-mono sy-link" href="/">[ Entrar ]</a>
+    </div>
+
+    <main class="sy-intro">
+      <h1 class="sy-nome" aria-label={NOME}>
+        {[...NOME].map((letra, i) => (
+          <span class="sy-mascara-letra" aria-hidden="true" style={`--i:${i}`}><span class="sy-letra">{letra}</span></span>
+        ))}
+      </h1>
+
+      <ul class="sy-categorias" aria-label="Categorias">
+        {categorias.map((c, i) => (
+          <li><span>{c}{i < categorias.length - 1 ? ',' : ''}</span></li>
+        ))}
+      </ul>
+
+      {/* asset em largura total revelado por máscara dupla */}
+      <div class="sy-asset">
+        <div class="sy-mascara">
+          <div class="sy-conteudo">
+            <Image
+              src={banner}
+              alt="SOUSAYL — mais que uma loja, um hub de boas escolhas"
+              widths={[800, 1200, 1678]}
+              sizes="100vw"
+              loading="eager"
+              fetchpriority="high"
+              class="sy-img"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="sy-meta">
+        <div class="sy-linha"></div>
+        <div class="sy-meta-linha">
+          <p class="sy-mono">Mais que uma loja. Um hub de boas escolhas.</p>
+          <p class="sy-mono">Descubra. Escolha. Aproveite.</p>
+          <a class="sy-mono sy-cta" href="/">[ Entrar no catálogo → ]</a>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  /* reset mínimo — página avulsa, não herda o global.css do site */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; }
+</style>
+
+<style>
+  :global(body) {
+    /* tokens — troque aqui pra reaproveitar em outra marca */
+    --sy-fundo: #0b0908;
+    --sy-tinta: #f2ece4;
+    --sy-cobre: #c99566;
+    --sy-ease: cubic-bezier(0.72, 0, 0.28, 1); /* = --ease-in-out-soft do original */
+    --sy-tempo: 1s; /* = --bd-time-transition-1000 */
+    --sy-atraso: 0.3s; /* = --initial-animation-delay (só na entrada) */
+    --sy-pad: clamp(16px, 3vw, 44px);
+
+    background:
+      radial-gradient(60% 46% at 50% 0%, rgba(201, 149, 102, 0.14), transparent 70%),
+      var(--sy-fundo);
+    color: var(--sy-tinta);
+    font-family: 'Montserrat', system-ui, sans-serif;
+    min-height: 100svh;
+  }
+
+  .sy-mono {
+    margin: 0;
+    font-size: clamp(0.66rem, 0.6rem + 0.26vw, 0.82rem);
+    font-weight: 700;
+    letter-spacing: -0.02em; /* mesmo tracking da legenda do original */
+    line-height: 1.14;
+    text-transform: uppercase;
+  }
+  .sy-link, .sy-cta { color: inherit; text-decoration: none; }
+  .sy-link:hover, .sy-cta:hover, .sy-link:focus-visible, .sy-cta:focus-visible { color: var(--sy-cobre); }
+  .sy-link:focus-visible, .sy-cta:focus-visible { outline: 2px solid var(--sy-cobre); outline-offset: 4px; }
+
+  .sy-topo {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--sy-pad);
+    opacity: 0;
+    animation: sy-aparece 0.8s var(--sy-ease) calc(var(--sy-atraso) + 1.2s) forwards;
+  }
+
+  .sy-intro { padding-bottom: var(--sy-pad); }
+
+  /* ---- título: caixa alta, centralizado, gigante, bold, tracking -0.05em, lh 0.9 */
+  .sy-nome {
+    display: flex;
+    justify-content: center;
+    margin: clamp(8px, 2vw, 32px) 0 0;
+    padding-inline: var(--sy-pad);
+    font-size: clamp(56px, 20.4vw, 430px);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  /* cada letra vive numa máscara própria; a letra sobe de dentro dela (--i vem inline) */
+  .sy-mascara-letra {
+    display: inline-block;
+    overflow: hidden;
+    padding-block: 0.05em;
+    margin-block: -0.05em;
+    padding-inline: 0.01em;
+  }
+  .sy-letra {
+    display: inline-block;
+    transform: translateY(115%);
+    /* marca vazada em cobre, como no logotipo do banner */
+    color: rgba(201, 149, 102, 0.06);
+    -webkit-text-stroke: clamp(1.5px, 0.16vw, 3px) var(--sy-cobre);
+    animation: sy-letra-sobe var(--sy-tempo) var(--sy-ease) calc(var(--sy-atraso) + var(--i, 0) * 0.07s) forwards;
+  }
+
+  /* ---- categorias: uma linha pequena, caixa alta, bold, separada por vírgulas */
+  .sy-categorias {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 0.4em;
+    list-style: none;
+    margin: clamp(28px, 5vw, 80px) 0 clamp(14px, 1.6vw, 24px);
+    padding: 0 var(--sy-pad);
+    font-size: clamp(0.7rem, 0.64rem + 0.26vw, 0.86rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.14;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--sy-cobre);
+    opacity: 0;
+    animation: sy-aparece 0.9s var(--sy-ease) calc(var(--sy-atraso) + 0.9s) forwards;
+  }
+
+  /* ---- asset: máscara dupla (o mecanismo do intro-asset-wrapper do original) */
+  .sy-asset {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 1678 / 937;
+    max-height: 92svh;
+    background: #000;
+  }
+  .sy-mascara {
+    height: 100%;
+    overflow: hidden;
+    transform: translateY(100%);
+    animation: sy-mascara-sobe var(--sy-tempo) var(--sy-ease) calc(var(--sy-atraso) + 0.5s) forwards;
+  }
+  .sy-conteudo {
+    height: 100%;
+    transform: translateY(-100%) scale3d(1.25, 1.25, 1);
+    animation: sy-conteudo-assenta var(--sy-tempo) var(--sy-ease) calc(var(--sy-atraso) + 0.5s) forwards;
+  }
+  .sy-conteudo :global(.sy-img) { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---- barra de meta: linha que se traça + 3 legendas */
+  .sy-meta { padding: 0 var(--sy-pad); }
+  .sy-linha {
+    height: 1px;
+    margin-top: clamp(14px, 2vw, 28px);
+    background: currentColor;
+    opacity: 0.6;
+    transform-origin: left center;
+    transform: scaleX(0);
+    animation: sy-traca 1s var(--sy-ease) calc(var(--sy-atraso) + 1.3s) forwards;
+  }
+  .sy-meta-linha {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: clamp(12px, 1.6vw, 22px);
+    opacity: 0;
+    animation: sy-aparece 0.9s var(--sy-ease) calc(var(--sy-atraso) + 1.7s) forwards;
+  }
+  @media (min-width: 900px) {
+    .sy-meta-linha { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+  }
+
+  /* ---- keyframes (os 2 primeiros são os do original, valores idênticos) */
+  @keyframes sy-mascara-sobe { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes sy-conteudo-assenta {
+    from { transform: translateY(-100%) scale3d(1.25, 1.25, 1); }
+    to { transform: translateY(0) scaleX(1); }
+  }
+  @keyframes sy-letra-sobe { from { transform: translateY(115%); } to { transform: translateY(0); } }
+  @keyframes sy-aparece { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sy-traca { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* movimento reduzido: tudo já no lugar, sem animação (como o original faz) */
+  @media (prefers-reduced-motion: reduce) {
+    .sy-topo, .sy-categorias, .sy-meta-linha { animation: none; opacity: 1; }
+    .sy-letra, .sy-mascara, .sy-conteudo, .sy-linha { animation: none; transform: none; }
+  }
+</style>

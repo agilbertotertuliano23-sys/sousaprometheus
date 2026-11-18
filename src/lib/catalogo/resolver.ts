@@ -61,6 +61,84 @@ export const CATEGORIA_OUTROS = '_outros';
 export const CATEGORIA_TUDO = '_tudo';
 
 const PRIORIDADE_DEFAULT = 50;
+const MAX_EM_ALTA = 6;
+const MIN_NICHO_PARA_EM_ALTA = 5;
+
+/**
+ * "Em alta" — `destaque:true` primeiro, depois `prioridade` desc, desempate estável; cap 6.
+ * Não retorna lista se o nicho tem < 5 produtos.
+ */
+export function emAlta(n: Nicho): Produto[] {
+  if (n.produtos.length < MIN_NICHO_PARA_EM_ALTA) return [];
+  return n.produtos
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      const da = a.p.destaque === true ? 0 : 1;
+      const db = b.p.destaque === true ? 0 : 1;
+      if (da !== db) return da - db;
+      const pr = (b.p.prioridade ?? 50) - (a.p.prioridade ?? 50);
+      if (pr !== 0) return pr;
+      return a.i - b.i;
+    })
+    .slice(0, MAX_EM_ALTA)
+    .map((x) => x.p);
+}
+
+export interface SessaoVitrineInicial {
+  id: string;
+  titulo: string;
+  kicker: string;
+  descricao: string;
+  produtos: Produto[];
+}
+
+/**
+ * Retorna as 3 sessões da página inicial (tela de entrada):
+ * 1. Em alta, 2. Kits, 3. Recomendados.
+ */
+export function obterSessoesInicial(nicho: Nicho): SessaoVitrineInicial[] {
+  const produtos = nicho.produtos;
+  const emAltaProds = emAlta(nicho);
+
+  const kitsProds = produtos.filter(
+    (p) =>
+      p.tags?.includes('kits') ||
+      p.categoria === 'kits' ||
+      p.nome.toLowerCase().includes('kit') ||
+      p.nome.toLowerCase().includes('macacão') ||
+      p.nome.toLowerCase().includes('short'),
+  );
+  const kitsFinal = kitsProds.length > 0 ? kitsProds : produtos.slice(4, 8);
+
+  const recomendadosProds = produtos.filter(
+    (p) => p.tags?.includes('recomendados') || (p.prioridade ?? 50) >= 85,
+  );
+  const recomendadosFinal = recomendadosProds.length > 0 ? recomendadosProds : produtos.slice(0, 6);
+
+  return [
+    {
+      id: 'em-alta',
+      titulo: 'Em alta',
+      kicker: 'TENDÊNCIA',
+      descricao: 'Os produtos mais procurados e desejados do momento.',
+      produtos: emAltaProds.length > 0 ? emAltaProds : produtos.slice(0, 6),
+    },
+    {
+      id: 'kits',
+      titulo: 'Kits',
+      kicker: 'CONJUNTOS',
+      descricao: 'Combinações perfeitas com estilo e o melhor custo-benefício.',
+      produtos: kitsFinal,
+    },
+    {
+      id: 'recomendados',
+      titulo: 'Recomendados',
+      kicker: 'PARA VOCÊ',
+      descricao: 'Recomendações exclusivas com base nos favoritos da comunidade.',
+      produtos: recomendadosFinal,
+    },
+  ];
+}
 
 /**
  * Prioridade efetiva p/ ordenação: default 50, inteiro, clamp 0..100.
@@ -197,6 +275,66 @@ export function produtosPorCategoria(
   return mapa;
 }
 
+/** Subcategoria (tipo de peça) — taxonomia FIXA, compartilhada por todos os
+ * nichos (ao contrário de `Categoria`, que é curada por nicho). Pedido:
+ * "crie subcategorias dentro das categorias: camisas, shorts, calças,
+ * tenis, kits, itens". `itens` é o catch-all — produto sem `subcategoria`
+ * declarada, ou com um id fora desta lista, cai aqui. */
+export interface Subcategoria {
+  id: string;
+  rotulo: string;
+}
+
+export const SUBCATEGORIAS: readonly Subcategoria[] = [
+  { id: 'camisas', rotulo: 'Camisas' },
+  { id: 'shorts', rotulo: 'Shorts' },
+  { id: 'calcas', rotulo: 'Calças' },
+  { id: 'tenis', rotulo: 'Tênis' },
+  { id: 'kits', rotulo: 'Kits' },
+  { id: 'itens', rotulo: 'Itens' },
+];
+
+const SUBCATEGORIA_CATCHALL = 'itens';
+const idsSubcategoria = new Set(SUBCATEGORIAS.map((s) => s.id));
+
+function subcategoriaEfetivaDe(produto: Produto): string {
+  return produto.subcategoria != null && idsSubcategoria.has(produto.subcategoria)
+    ? produto.subcategoria
+    : SUBCATEGORIA_CATCHALL;
+}
+
+/**
+ * Agrupa `produtos` (já filtrados pra UMA categoria) por subcategoria, na
+ * ordem fixa de `SUBCATEGORIAS`; grupos vazios não entram no resultado (uma
+ * categoria pequena não deveria listar subtítulos vazios tipo "Tênis" sem
+ * nenhum produto). Ordena cada grupo por `prioridadeDe` desc, desempate pela
+ * ordem de entrada em `produtos` — mesma regra de `produtosPorCategoria`.
+ */
+export function produtosPorSubcategoria(
+  produtos: readonly Produto[],
+): Array<{ id: string; rotulo: string; produtos: Produto[] }> {
+  const indiceDeclaracao = new Map<Produto, number>(
+    produtos.map((p, i) => [p, i] as const),
+  );
+  const porId = new Map<string, Produto[]>();
+
+  for (const p of produtos) {
+    const id = subcategoriaEfetivaDe(p);
+    const bucket = porId.get(id);
+    if (bucket) bucket.push(p);
+    else porId.set(id, [p]);
+  }
+
+  return SUBCATEGORIAS.filter((s) => porId.has(s.id)).map((s) => {
+    const lista = [...(porId.get(s.id) ?? [])].sort((a, b) => {
+      const dp = prioridadeDe(b) - prioridadeDe(a);
+      if (dp !== 0) return dp;
+      return (indiceDeclaracao.get(a) ?? 0) - (indiceDeclaracao.get(b) ?? 0);
+    });
+    return { id: s.id, rotulo: s.rotulo, produtos: lista };
+  });
+}
+
 /**
  * Herói da vitrine (e default de `entrada.heroiSku`). Doc 08 §4.3.
  * Invariante: o nicho tem >= 1 produto (garantido por `catalog validate` /
@@ -266,4 +404,26 @@ export function blocosDe(produto: Produto): BlocoApresentacao[] {
     return [{ tipo: 'specs', pares: produto.specs }, ...blocos];
   }
   return [...blocos];
+}
+
+/**
+ * Produtos relacionados a `produto` pra trilha "Você também vai gostar" do
+ * detalhe (E5/E6). Mesma categoria primeiro, resto depois — cada grupo por
+ * `prioridadeDe` desc; nunca inclui o próprio produto; cap em `limite`.
+ */
+export function produtosRelacionados(
+  nicho: Nicho,
+  produto: Produto,
+  limite = 8,
+): Produto[] {
+  const outros = nicho.produtos.filter((p) => p.sku !== produto.sku);
+  const porPrioridade = (lista: Produto[]) =>
+    [...lista].sort((a, b) => prioridadeDe(b) - prioridadeDe(a));
+
+  const mesmaCategoria = outros.filter(
+    (p) => produto.categoria != null && p.categoria === produto.categoria,
+  );
+  const resto = outros.filter((p) => !mesmaCategoria.includes(p));
+
+  return [...porPrioridade(mesmaCategoria), ...porPrioridade(resto)].slice(0, limite);
 }

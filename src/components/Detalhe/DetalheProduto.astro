@@ -1,125 +1,616 @@
 ---
 /**
- * DetalheProduto — E5-01 (casca) + E5-02 (galeria rica + specs-resumo).
- * Galeria (GaleriaMidia: scroll-snap + dots), nome, preço, benefícios (`<ul>`),
- * specs-resumo (`<dl>`), blocos (via RenderBlocos — inclui o BlocoSpecs
- * sintético de `blocosDe`) e CTAs.
+ * DetalheProduto — reconstruído ao modelo do mockup "e-commerce clean"
+ * colado pelo dono (ref: header + trilha / galeria em grade 2-col + painel
+ * lateral com preço+favoritar / tamanho / cor / comprar / descrição /
+ * acordeão / trilha "você também vai gostar" / faixa de dúvidas com form /
+ * rodapé). Adaptado aos tokens e ao modelo de dados do site (tema escuro,
+ * sem checkout próprio — o CTA de compra sempre sai pra `produto.url`).
  *
- * Sem `<script>` próprio, funciona 100% sem JS (RNF-04). O `<script>` opcional
- * dos dots é da GaleriaMidia.
+ * Mantém: GaleriaMidia NÃO é usada aqui (grade estática substitui o
+ * carrossel 9:16 só nesta tela — GaleriaMidia continua servindo BlocoMidia),
+ * specs-resumo via `RenderBlocos` (E5-02 é o dono de `BlocoSpecs`, não
+ * duplicado aqui — o `.pd-specs` solto da versão anterior duplicava esse
+ * bloco e foi removido), CTA de saída e "voltar". Funciona sem JS (RNF-04)
+ * — acordeão via `<details>/<summary>` nativo (mesmo padrão de `Faq.astro`).
  *
- * O elemento raiz NÃO inclui `id="produto-<sku>"` — a âncora por produto é de
- * E6-01 (que envolve cada DetalheProduto num `<article id="produto-<sku>">`).
+ * Form de dúvidas reusa o MESMO `PUBLIC_FORMSPREE_ID` de `ListaPrioridade`
+ * (uma caixa de entrada só pro dono) — decisão explícita do pedido "página
+ * inteira, igual ao mockup", ciente de que duplica a captura de dados por
+ * produto (o site global diz "não coleta dados" em `BlocoInformacoes`).
+ *
+ * A âncora `id="produto-<sku>"` é do wrapper de E6-01 (SecaoUnica).
  */
 import type { Produto } from '../../data/tipos';
 import { galeriaDe, blocosDe } from '../../lib/catalogo/resolver';
+import { urlAsset } from '../../lib/catalogo/carregar';
 import { formatarPreco, percentualDesconto } from '../../lib/utils';
 import RenderBlocos from '../blocos/RenderBlocos.astro';
-import GaleriaMidia from './GaleriaMidia.astro';
+import MiniProduto from '../Vitrine/MiniProduto.astro';
 
 interface Props {
   produto: Produto;
   slug: string;
   cta: string;
+  relacionados?: Produto[];
 }
 
-const { produto, slug, cta } = Astro.props;
+const { produto, slug, cta, relacionados = [] } = Astro.props;
 const galeria = galeriaDe(produto);
 const blocos = blocosDe(produto);
 const desconto = percentualDesconto(produto.precoCentavos, produto.precoDeCentavos);
+
+const thumb = galeria.find((m) => m.tipo === 'imagem') ?? null;
+const descLinhas = produto.descricaoCurta.split(/(?<=[.!?])\s+/).filter(Boolean);
+
+// SIZE / COLOUR — dos specs quando existirem; senão estrutura genérica.
+function specVals(re: RegExp): string[] {
+  const s = (produto.specs ?? []).find((p) => re.test(p.chave));
+  return s ? s.valor.split(/[,/;]\s*/).filter(Boolean) : [];
+}
+const tamanhos = specVals(/tamanh|size|medid/i);
+const cores = specVals(/\bcor(es)?\b|colou?r/i);
+const tamanhosView = tamanhos.length ? tamanhos : ['P', 'M', 'G', 'GG'];
+const coresView = cores.length ? cores : ['Padrão', 'Alt', 'Grafite', 'Areia'];
+
+// Faixa de categorias — das tags do produto; completa com rótulos genéricos até 5.
+const genericas = ['Novidades', 'Mais vendidos', 'Promoções', 'Coleção', 'Ver tudo'];
+const catsView = [...(produto.tags ?? []), ...genericas].filter((v, i, a) => a.indexOf(v) === i).slice(0, 5);
+
+const formspreeId = import.meta.env.PUBLIC_FORMSPREE_ID ?? '';
+const formAction = formspreeId ? `https://formspree.io/f/${formspreeId}` : '';
 ---
-<article class="detalhe" data-sku={produto.sku}>
-  <div class="detalhe-galeria" data-slot="detalhe-galeria">
-    <GaleriaMidia itens={galeria} slug={slug} sku={produto.sku} />
-  </div>
+<article class="pd" data-sku={produto.sku}>
+  <!-- ===== Topbar ===== -->
+  <header class="pd-topbar">
+    <div class="pd-topbar-in">
+      <span class="pd-marca">{slug}</span>
+      <span class="pd-marca-nome">{produto.nome}</span>
+      <div class="pd-icones" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 016 0"/></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </div>
+    </div>
+  </header>
 
-  <h2 class="detalhe-nome" data-slot="detalhe-nome">{produto.nome}</h2>
+  <!-- ===== Navbar ===== -->
+  <nav class="pd-nav">
+    <div class="pd-nav-in">
+      <a href="#tela-entrada" data-ir="entrada" class="ativo">INÍCIO</a>
+      <a href="#tela-vitrine" data-ir="vitrine">PRODUTOS</a>
+      <a href="#tela-vitrine" data-ir="vitrine">CATEGORIAS</a>
+      <a href={produto.url} target="_blank" rel="noopener nofollow">LOJA</a>
+    </div>
+  </nav>
 
-  <div class="detalhe-preco">
-    <strong>{formatarPreco(produto.precoCentavos)}</strong>
-    {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
-    {desconto > 0 && <span class="tarja">-{desconto}%</span>}
-  </div>
+  <!-- ===== Trilha (breadcrumb) ===== -->
+  <nav class="pd-trilha" aria-label="Você está em">
+    <a href="#tela-entrada" data-ir="entrada">Início</a>
+    <span aria-hidden="true">/</span>
+    <a href="#tela-vitrine" data-ir="vitrine">Produtos</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{produto.nome}</span>
+  </nav>
 
-  {produto.beneficios?.length ? (
-    <ul class="detalhe-beneficios">
-      {produto.beneficios.map((b) => <li>{b}</li>)}
-    </ul>
-  ) : null}
+  <!-- ===== Produto (galeria + painel) ===== -->
+  <div class="pd-grid">
+    <div class="pd-galeria">
+      <ul class="pd-galeria-grade">
+        {galeria.map((m, i) => (
+          <li class="pd-galeria-item">
+            {m.tipo === 'video' ? (
+              <video
+                class="pd-galeria-media"
+                data-vertical
+                controls
+                muted
+                playsinline
+                loop
+                preload="none"
+                src={urlAsset(slug, m.src)}
+                poster={m.poster ? urlAsset(slug, m.poster) : undefined}
+                aria-label={m.alt}
+              ></video>
+            ) : (
+              <img
+                class="pd-galeria-media"
+                src={urlAsset(slug, m.src)}
+                alt={m.alt}
+                width="720"
+                height="900"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
 
-  {produto.specs?.length ? (
-    <dl class="detalhe-specs-resumo">
-      {produto.specs.map((par) => (
-        <div class="specs-linha">
-          <dt>{par.chave}</dt>
-          <dd>{par.valor}</dd>
+    <div class="pd-info">
+      <span class="pd-marca-tag">{produto.tags?.[0] ?? slug}</span>
+      <h1 class="pd-titulo">{produto.nome}</h1>
+      <p class="pd-artigo">Artigo {produto.sku}</p>
+
+      <div class="pd-preco-linha">
+        <div class="pd-preco">
+          <strong>{formatarPreco(produto.precoCentavos)}</strong>
+          {produto.precoDeCentavos && <s>{formatarPreco(produto.precoDeCentavos)}</s>}
+          {desconto > 0 && <span class="pd-off">-{desconto}%</span>}
         </div>
-      ))}
-    </dl>
+        <button type="button" class="pd-fav" aria-label="Favoritar" title="Favoritar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.5s-7.5-4.6-9.6-9.4C1 7.9 2.6 5 5.6 4.3c2-.5 3.9.3 5 1.9.3.4.9.4 1.2 0 1.1-1.6 3-2.4 5-1.9 3 .7 4.6 3.6 3.2 6.8C19.5 15.9 12 20.5 12 20.5z"/></svg>
+        </button>
+      </div>
+
+      <p class="pd-lbl">Tamanho</p>
+      <div class="pd-opcoes">
+        {tamanhosView.map((t) => <button type="button">{t}</button>)}
+      </div>
+      <p class="pd-guia"><span class="pd-box" aria-hidden="true"></span> Guia de medidas</p>
+
+      <p class="pd-lbl">Cor</p>
+      <div class="pd-cores">
+        {coresView.map((c) => (
+          <span class="pd-cor">
+            <span class="pd-swatch" aria-hidden="true"></span>
+            <span>{c}</span>
+          </span>
+        ))}
+      </div>
+
+      <a class="pd-cart" href={produto.url} target="_blank" rel="noopener nofollow" data-sku={produto.sku}>{cta.toUpperCase()} ›</a>
+
+      <div class="pd-desc">
+        <h3 class="pd-desc-tit">Descrição</h3>
+        {descLinhas.map((l) => <p>{l}</p>)}
+      </div>
+
+      <div class="pd-acordeao">
+        <details class="pd-ac-item" open>
+          <summary class="pd-ac-pergunta">
+            <span>Entrega</span>
+            <span class="pd-ac-icone" aria-hidden="true"></span>
+          </summary>
+          <p class="pd-ac-resposta">
+            O prazo e as opções de frete aparecem no checkout da loja de destino — a compra é finalizada lá, não aqui.
+          </p>
+        </details>
+        <details class="pd-ac-item">
+          <summary class="pd-ac-pergunta">
+            <span>Garantia e trocas</span>
+            <span class="pd-ac-icone" aria-hidden="true"></span>
+          </summary>
+          <p class="pd-ac-resposta">
+            Troca, devolução e garantia seguem a política da loja onde a compra foi feita — confira os termos dela antes de comprar.
+          </p>
+        </details>
+        {blocos.length > 0 && (
+          <p class="pd-mais"><a href={`#produto-${produto.sku}-blocos`}>Ver mais detalhes ↓</a></p>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <div id={`produto-${produto.sku}-blocos`}>
+    <RenderBlocos blocos={blocos} slug={slug} />
+  </div>
+
+  <!-- ===== Você também vai gostar ===== -->
+  {relacionados.length > 0 && (
+    <section class="pd-relacionados">
+      <div class="pd-relacionados-cab">
+        <h2>Você também vai gostar <span class="pd-relacionados-contagem">({relacionados.length})</span></h2>
+        <a class="pd-relacionados-link" href="#tela-vitrine" data-ir="vitrine">Ver catálogo ›</a>
+      </div>
+      <ul class="pd-relacionados-trilha">
+        {relacionados.map((p) => (
+          <li><MiniProduto produto={p} slug={slug} videoHover={false} /></li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <!-- ===== Features ===== -->
+  {produto.beneficios?.length ? (
+    <div class="pd-features">
+      <div class="pd-features-in">
+        {produto.beneficios.slice(0, 5).map((f) => (
+          <div class="pd-feat"><span class="pd-feat-marca" aria-hidden="true"></span><span>{f}</span></div>
+        ))}
+      </div>
+    </div>
   ) : null}
 
-  <RenderBlocos blocos={blocos} slug={slug} />
+  <!-- ===== Categorias ===== -->
+  <section class="pd-cats">
+    <h3>CATEGORIAS</h3>
+    <div class="pd-cats-grid">
+      {catsView.map((c) => (
+        <a class="pd-cat" href="#tela-vitrine" data-ir="vitrine">
+          <span class="pd-cat-circ" aria-hidden="true"></span>
+          <span>{c}</span>
+        </a>
+      ))}
+    </div>
+  </section>
 
-  <a
-    class="detalhe-cta"
-    href={produto.url}
-    target="_blank"
-    rel="noopener nofollow"
-    data-sku={produto.sku}>{cta} ›</a>
-  <a class="detalhe-voltar" href="#tela-vitrine" data-ir="vitrine">← Voltar à vitrine</a>
+  <a class="pd-voltar" href="#tela-vitrine" data-ir="vitrine">← Voltar à vitrine</a>
+
+  <!-- ===== Ficou com dúvidas? ===== -->
+  <section class="pd-duvidas">
+    <div class="pd-duvidas-grade">
+      <div class="pd-duvidas-texto">
+        <p class="pd-duvidas-titulo">Ficou com dúvidas sobre {produto.nome}?</p>
+        <p class="pd-duvidas-sub">Deixa seu contato que a gente te ajuda a escolher o tamanho e a cor certos.</p>
+
+        {formspreeId ? (
+          <form class="pd-duvidas-form" action={formAction} method="POST" data-pd-duvidas>
+            <input type="hidden" name="produto" value={produto.nome} />
+            <input type="text" name="_gotcha" class="pd-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <label class="pd-campo">
+              <span class="sr-only">Seu nome</span>
+              <input type="text" name="nome" placeholder="Nome *" required autocomplete="name" />
+            </label>
+            <label class="pd-campo">
+              <span class="sr-only">Seu telefone</span>
+              <input type="tel" name="telefone" placeholder="Número de telefone *" required autocomplete="tel" inputmode="tel" />
+            </label>
+            <label class="pd-consentimento">
+              <input type="checkbox" name="consentimento" required />
+              <span>Concordo em ser contatado sobre este produto e com o uso dos meus dados só pra essa resposta.</span>
+            </label>
+            <button type="submit" class="pd-duvidas-botao">Enviar pergunta ›</button>
+          </form>
+        ) : (
+          import.meta.env.DEV && (
+            <p class="pd-aviso-dev">
+              [DEV] `PUBLIC_FORMSPREE_ID` não setado — ver `.env.example` pra este formulário funcionar.
+            </p>
+          )
+        )}
+
+        <p class="pd-duvidas-sucesso" data-pd-duvidas-sucesso hidden>Prontinho — recebemos sua pergunta. 🎉</p>
+        <p class="pd-duvidas-erro" data-pd-duvidas-erro hidden>Não deu pra enviar agora. Tenta de novo em instantes.</p>
+      </div>
+
+      {thumb && (
+        <div class="pd-duvidas-img" aria-hidden="true">
+          <img src={urlAsset(slug, thumb.src)} alt="" loading="lazy" decoding="async" />
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- ===== Rodapé ===== -->
+  <footer class="pd-rodape">
+    <div class="pd-rodape-in">
+      <div>
+        <h4>Catálogo</h4>
+        <p class="rotulo">Vitrine {slug}</p>
+        <p class="rotulo">Sem checkout próprio</p>
+      </div>
+      <div>
+        <h4>Origem</h4>
+        <p class="rotulo">SOUSAYL · estático</p>
+        <p class="rotulo">Personalizado por URL</p>
+      </div>
+      <div class="pd-rodape-fim">
+        <span class="rotulo">{slug}</span>
+      </div>
+    </div>
+  </footer>
 </article>
+
+<script>
+  // Progressive enhancement do form de dúvidas — mesmo padrão de
+  // ListaPrioridade: sem JS, POST nativo pro Formspree já funciona.
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-pd-duvidas]')) {
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const secao = form.closest('.pd-duvidas');
+      const sucesso = secao?.querySelector<HTMLElement>('[data-pd-duvidas-sucesso]');
+      const erro = secao?.querySelector<HTMLElement>('[data-pd-duvidas-erro]');
+      const botao = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (botao) botao.disabled = true;
+      erro?.setAttribute('hidden', '');
+
+      try {
+        const resposta = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        if (resposta.ok) {
+          form.hidden = true;
+          sucesso?.removeAttribute('hidden');
+        } else {
+          erro?.removeAttribute('hidden');
+        }
+      } catch {
+        erro?.removeAttribute('hidden');
+      } finally {
+        if (botao) botao.disabled = false;
+      }
+    });
+  }
+</script>
+
 <style>
-  .detalhe { display: flex; flex-direction: column; gap: var(--sp-4); }
-  .detalhe-galeria { margin-inline: calc(-1 * var(--sp-4)); }
-  .detalhe-nome { font-size: var(--fs-3); }
-  .detalhe-specs-resumo { margin: 0; display: flex; flex-direction: column; }
-  .detalhe-specs-resumo .specs-linha {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--sp-4);
-    padding: var(--sp-2) 0;
-    border-bottom: 1px solid var(--linha);
-  }
-  .detalhe-specs-resumo .specs-linha:last-child { border-bottom: 0; }
-  .detalhe-specs-resumo dt { color: var(--texto-fraco); font-size: var(--fs-00); }
-  .detalhe-specs-resumo dd { margin: 0; font-family: var(--f-mono); font-size: var(--fs-00); text-align: right; }
-  .detalhe-preco { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
-  .detalhe-preco strong { font-family: var(--f-mono); font-size: var(--fs-2); }
-  .detalhe-preco s { color: var(--texto-fraco); font-size: var(--fs-0); }
-  .detalhe-preco .tarja {
-    background: var(--acento);
-    color: #fff; /* RNF-07: AA sobre #1E6FFF; acento claro exige --acento-texto/texto escuro */
-    font-family: var(--f-mono);
-    font-size: var(--fs-00);
-    padding: 2px var(--sp-2);
-    border-radius: 999px;
-  }
-  .detalhe-beneficios {
-    margin: 0;
-    padding-left: var(--sp-6);
+  .pd {
+    width: 100vw;
+    margin-left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-1);
+    color: var(--texto);
   }
-  .detalhe-cta,
-  .detalhe-voltar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: var(--toque-min);
-    border-radius: var(--raio-sm);
+  .pd > :not(.pd-topbar):not(.pd-nav):not(.pd-features):not(.pd-rodape) {
+    max-width: 1200px;
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 32px;
   }
-  .detalhe-cta {
-    position: sticky;
-    bottom: var(--sp-2);
-    background: var(--acento);
-    color: #fff; /* RNF-07: ver nota da tarja */
-    font-family: var(--f-display);
-    font-weight: 600;
+
+  /* Topbar / Navbar */
+  .pd-topbar { background: transparent; color: #fff; }
+  .pd-topbar-in {
+    max-width: 1200px; margin-inline: auto;
+    padding: 22px 32px;
+    display: flex; align-items: center; gap: var(--sp-3);
   }
-  .detalhe-voltar {
-    border: 1px solid var(--linha);
-    color: var(--texto-fraco);
-    font-size: var(--fs-00);
+  .pd-marca { font-family: var(--f-mono); font-weight: 800; text-transform: uppercase; }
+  .pd-marca-nome { font-family: var(--f-display); font-weight: 700; flex: 1; }
+  .pd-icones { display: flex; gap: var(--sp-4); }
+
+  .pd-nav { background: transparent; border-top: 1px solid rgba(255,255,255,0.25); color: #fff; }
+  .pd-nav-in {
+    max-width: 1200px; margin-inline: auto;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+  }
+  .pd-nav-in a {
+    text-align: center; padding: 22px 0;
+    font-family: var(--f-display); font-weight: 700; font-size: var(--fs-00);
+    letter-spacing: 0.06em; color: #fff;
+    border-left: 1px solid rgba(255,255,255,0.25); position: relative;
+  }
+  .pd-nav-in a:first-child { border-left: 0; }
+  .pd-nav-in a.ativo::after {
+    content: ""; position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+    width: 7px; height: 7px; border-radius: 999px; background: #fff;
+  }
+
+  /* Trilha (breadcrumb) */
+  .pd-trilha {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding-top: var(--sp-6); padding-bottom: 0;
+    color: var(--texto-fraco); font-size: var(--fs-00);
+  }
+  .pd-trilha a { color: var(--texto-fraco); }
+  .pd-trilha a:hover { color: var(--texto); }
+  .pd-trilha [aria-current] { color: var(--texto); font-weight: 600; }
+
+  /* Grid de produto: galeria + painel */
+  .pd-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 48px;
+    padding-block: 24px 40px;
+    align-items: start;
+  }
+
+  .pd-galeria-grade {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-2);
+  }
+  .pd-galeria-item { aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--raio-sm); background: var(--superficie-alta); }
+  .pd-galeria-media { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .pd-info { display: flex; flex-direction: column; gap: var(--sp-2); text-align: left; }
+  .pd-marca-tag {
+    align-self: flex-start; color: var(--acento-texto);
+    font-family: var(--f-mono); font-weight: 700; letter-spacing: var(--tracking-label);
+    text-transform: uppercase; font-size: var(--fs-00);
+  }
+  .pd-titulo {
+    margin: 0; font-family: var(--f-display); font-weight: 800;
+    font-size: var(--fs-3); line-height: 1.15;
+  }
+  .pd-artigo { margin: 0; color: var(--texto-fraco); font-size: var(--fs-00); }
+
+  .pd-preco-linha { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-2); }
+  .pd-preco { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+  .pd-preco strong { font-family: var(--f-mono); font-size: var(--fs-2); }
+  .pd-preco s { color: var(--texto-fraco); }
+  .pd-off {
+    background: var(--acento); color: #fff; font-family: var(--f-mono);
+    font-size: var(--fs-00); padding: 2px var(--sp-2); border-radius: 999px;
+  }
+  .pd-fav {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--linha); color: var(--texto);
+    cursor: pointer; transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .pd-fav:hover { border-color: var(--acento-texto); color: var(--acento-texto); }
+
+  .pd-lbl {
+    margin: var(--sp-3) 0 0; color: var(--texto-fraco);
+    font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: var(--fs-00);
+  }
+  .pd-opcoes { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .pd-opcoes button {
+    min-width: 42px; min-height: 42px; padding-inline: var(--sp-2);
+    background: transparent; color: var(--texto); border: 1px solid var(--linha); border-radius: var(--raio-sm);
+    font-family: var(--f-display); font-weight: 700; cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+  .pd-opcoes button:hover { border-color: var(--acento-texto); }
+  .pd-guia { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-00); color: var(--texto-fraco); margin: var(--sp-1) 0 0; }
+  .pd-box { width: 14px; height: 14px; background: var(--acento); display: inline-block; }
+
+  .pd-cores { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+  .pd-cor { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--texto-fraco); }
+  .pd-swatch {
+    display: block; width: 30px; height: 30px; border: 1px solid var(--linha);
+    border-radius: 999px; background: color-mix(in oklab, var(--acento) 30%, var(--superficie));
+  }
+
+  .pd-cart {
+    display: flex; align-items: center; justify-content: center;
+    min-height: var(--toque-min); border-radius: var(--raio-botao); text-transform: uppercase; font-weight: 700;
+    letter-spacing: 0.06em; margin-top: var(--sp-4);
+    background: var(--acento); color: #fff; font-family: var(--f-display);
+  }
+
+  .pd-desc { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .pd-desc-tit {
+    margin: 0; font-family: var(--f-display); font-weight: 700; font-size: var(--fs-00);
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--texto-fraco);
+  }
+  .pd-desc p { margin: 0; color: var(--texto-fraco); font-size: var(--fs-00); line-height: var(--lh-normal); }
+
+  /* Acordeão — mesmo padrão de Faq.astro (<details>/<summary>, "+" que gira 45°). */
+  .pd-acordeao { margin-top: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .pd-ac-item { border-top: 1px solid var(--linha); }
+  .pd-ac-pergunta {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    padding: var(--sp-3) 0; min-height: var(--toque-min); cursor: pointer;
+    color: var(--texto); font-weight: 700; font-size: var(--fs-0); list-style: none;
+  }
+  .pd-ac-pergunta::-webkit-details-marker { display: none; }
+  .pd-ac-pergunta::marker { content: ''; }
+  .pd-ac-icone { flex: 0 0 auto; position: relative; width: 16px; height: 16px; transition: transform 0.3s ease; }
+  .pd-ac-icone::before, .pd-ac-icone::after {
+    content: ''; position: absolute; background: var(--texto); border-radius: 999px;
+  }
+  .pd-ac-icone::before { inset-inline: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+  .pd-ac-icone::after { inset-block: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+  .pd-ac-item[open] .pd-ac-icone { transform: rotate(45deg); }
+  .pd-ac-resposta { margin: 0; padding: 0 0 var(--sp-3); color: var(--texto-fraco); font-size: var(--fs-00); line-height: var(--lh-normal); }
+  .pd-mais { margin: var(--sp-2) 0 0; }
+  .pd-mais a { font-weight: 600; font-size: var(--fs-00); color: var(--acento-texto); }
+
+  /* Você também vai gostar */
+  .pd-relacionados { padding-block: var(--sp-8) 0; }
+  .pd-relacionados-cab { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+  .pd-relacionados-cab h2 { margin: 0; font-family: var(--f-display); font-size: var(--fs-1); font-weight: 800; }
+  .pd-relacionados-contagem { color: var(--texto-fraco); font-weight: 400; font-size: var(--fs-0); }
+  .pd-relacionados-link { color: var(--acento-texto); font-weight: 600; font-size: var(--fs-00); white-space: nowrap; }
+  .pd-relacionados-trilha {
+    list-style: none; margin: 0; padding: 0 0 var(--sp-2);
+    display: flex; gap: var(--trilha-gap);
+    overflow-x: auto; scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+  }
+  .pd-relacionados-trilha > li { flex: 0 0 clamp(160px, 42vw, 220px); scroll-snap-align: start; }
+  @media (prefers-reduced-motion: no-preference) { .pd-relacionados-trilha { scroll-behavior: smooth; } }
+
+  /* Features */
+  .pd-features { background: var(--acento); color: #fff; margin-top: 56px; }
+  .pd-features-in {
+    max-width: 1200px; margin-inline: auto;
+    padding: 40px 32px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; text-align: center;
+  }
+  .pd-feat { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); font-size: var(--fs-00); }
+  .pd-feat-marca { width: 26px; height: 26px; border: 2px solid #fff; border-radius: 999px; }
+
+  /* Categorias */
+  .pd-cats { text-align: center; padding-block: 56px; }
+  .pd-cats h3 { letter-spacing: 0.08em; margin-bottom: 36px; }
+  .pd-cats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; max-width: 1100px; margin-inline: auto; }
+  .pd-cat { display: flex; flex-direction: column; align-items: center; gap: 14px; font-weight: 700; font-size: var(--fs-00); }
+  .pd-cat-circ { width: 100px; height: 100px; border-radius: 999px; background: var(--acento); }
+
+  .pd-voltar {
+    align-self: center; margin-block: var(--sp-4);
+    border: 1px solid var(--linha); color: var(--texto-fraco);
+    padding: var(--sp-2) var(--sp-4); border-radius: var(--raio-sm); font-size: var(--fs-00);
+  }
+
+  /* Ficou com dúvidas? */
+  .pd-duvidas { padding-block: var(--sp-8); border-top: 1px solid var(--linha); }
+  .pd-duvidas-grade { display: grid; grid-template-columns: 1fr; gap: var(--sp-6); align-items: center; }
+  .pd-duvidas-titulo { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem); line-height: 1.15; }
+  .pd-duvidas-sub { margin: var(--sp-2) 0 0; color: var(--texto-fraco); font-size: var(--fs-0); max-width: 46ch; }
+  .pd-duvidas-form { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); max-width: 420px; }
+  .pd-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .pd-campo input {
+    width: 100%; min-height: var(--toque-min); padding: 0 var(--sp-4);
+    border-radius: var(--raio-sm); border: 1px solid var(--linha);
+    background: var(--bg); color: var(--texto); font-size: var(--fs-0);
+  }
+  .pd-campo input:focus-visible { outline: 2px solid var(--acento-texto); outline-offset: 2px; }
+  .pd-consentimento { display: flex; align-items: flex-start; gap: var(--sp-2); color: var(--texto-fraco); font-size: var(--fs-00); }
+  .pd-consentimento input { margin-top: 3px; flex: 0 0 auto; }
+  .pd-duvidas-botao {
+    min-height: var(--toque-min); padding: 0 var(--sp-4); border: none; border-radius: var(--raio-botao);
+    background: var(--acento); color: #fff; font-family: var(--f-display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: var(--fs-0); cursor: pointer; transition: filter 0.2s ease;
+  }
+  .pd-duvidas-botao:hover { filter: brightness(1.12); }
+  .pd-duvidas-botao:disabled { opacity: 0.6; cursor: default; }
+  .pd-duvidas-sucesso { margin: var(--sp-3) 0 0; color: var(--acento-texto); font-weight: 600; font-size: var(--fs-0); }
+  .pd-duvidas-erro { margin: var(--sp-3) 0 0; color: #ff6b6b; font-size: var(--fs-00); }
+  .pd-aviso-dev {
+    margin-top: var(--sp-3); padding: var(--sp-3); border: 1px dashed var(--linha); border-radius: var(--raio-sm);
+    color: var(--texto-fraco); font-family: var(--f-mono); font-size: var(--fs-00);
+  }
+  .pd-duvidas-img { border-radius: var(--raio-sm); overflow: hidden; aspect-ratio: 4 / 3; background: var(--superficie-alta); }
+  .pd-duvidas-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  /* Rodapé */
+  .pd-rodape { background: var(--acento); color: #fff; }
+  .pd-rodape-in {
+    max-width: 1200px; margin-inline: auto;
+    padding: 48px 32px 32px;
+    display: grid; grid-template-columns: 1fr 1fr auto; gap: 40px;
+  }
+  .pd-rodape h4 { margin-bottom: 16px; }
+  .pd-rodape .rotulo { color: rgba(255,255,255,0.85); display: block; margin-bottom: var(--sp-1); }
+  .pd-rodape-fim { display: flex; align-items: flex-end; justify-content: flex-end; }
+
+  @media (min-width: 640px) {
+    .pd-duvidas-grade { grid-template-columns: 1fr 320px; }
+  }
+
+  @media (max-width: 960px) {
+    .pd-grid { grid-template-columns: 1fr; }
+    .pd-features-in { grid-template-columns: repeat(3, 1fr); row-gap: var(--sp-6); }
+    .pd-cats-grid { grid-template-columns: repeat(3, 1fr); }
+    .pd-rodape-in { grid-template-columns: 1fr 1fr; }
+    .pd-rodape-fim { grid-column: span 2; justify-content: flex-start; }
+  }
+  @media (max-width: 560px) {
+    .pd-nav-in a { padding: 16px 2px; font-size: clamp(0.56rem, 2.7vw, var(--fs-00)); letter-spacing: 0.02em; }
+    .pd-topbar-in { padding: 16px 5vw; gap: var(--sp-2); }
+    .pd-marca { font-size: 0.7rem; }
+    .pd-marca-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-00); }
+    .pd-icones { gap: var(--sp-3); flex: none; }
+    .pd-cats-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .pd-features { margin-top: 40px; }
+    .pd-features-in {
+      grid-template-columns: 1fr;
+      gap: var(--sp-3);
+      padding: 32px 5vw;
+      text-align: left;
+    }
+    .pd-feat { flex-direction: row; align-items: center; gap: var(--sp-3); }
+    .pd-feat-marca { flex: none; }
+
+    .pd-rodape-in {
+      grid-template-columns: 1fr;
+      gap: var(--sp-4);
+      padding: 36px 5vw 28px;
+    }
+    .pd-rodape-fim { grid-column: auto; justify-content: flex-start; align-items: flex-start; }
   }
 </style>

@@ -13,6 +13,7 @@
  */
 import { prefereMenosMovimento } from '../motion/reduced-motion';
 import { ligarVideoVertical } from '../midia/video-vertical';
+import { rolarPara } from '../motion/rolagem';
 
 export type Tela = 'entrada' | 'vitrine' | 'detalhe';
 
@@ -40,29 +41,10 @@ export interface EstadoTela {
  *   '#produto=s' | '#produto-s'    -> { tela: 'detalhe', sku: 's' }
  *   '#tela-detalhe'               -> { tela: 'detalhe' }        (sem sku -> rebaixa)
  *   '#qualquer-outra-coisa'       -> { tela: 'entrada' }
- * `estadoInicial`: hash > revisita (recorrente, sem ?n=, sem hash) > entrada.
+ * `estadoInicial`: hash > entrada. [AUTO-DECISION D-11 revertida — confirmado
+ * com o dono (Vinicius): a 1ª tela ao iniciar é sempre a entrada (main),
+ * mesmo em revisita. Ver V-8 em docs/VALIDACAO-PO.md.]
  */
-
-const CHAVE_MEMORIA = 'prometeus:ultimo-nicho';
-
-/**
- * Snapshot da memória de revisita ANTES de `aplicarPersonalizacao()` (chamado no
- * <script> de Base.astro) gravar a chave nesta carga. ES modules avaliam este
- * top-level na FASE DE IMPORT — que acontece antes de qualquer chamada de função
- * no <script>. `contexto.ts` não grava nada em top-level, então a leitura é
- * limpa. Ver E6-02 Riscos nota 3. Se um dia `contexto.ts` gravar em top-level,
- * migrar para uma API explícita (`capturarRevisita()` como 1ª linha do <script>).
- */
-const eraRecorrente: boolean = (() => {
-  try {
-    return (
-      typeof localStorage !== 'undefined' &&
-      localStorage.getItem(CHAVE_MEMORIA) != null
-    );
-  } catch {
-    return false;
-  }
-})();
 
 let ligada = false;
 let estadoAtual: EstadoTela = { tela: 'entrada' };
@@ -132,23 +114,18 @@ export function estadoDeHash(hash: string): EstadoTela {
   return { tela: 'entrada' };
 }
 
-/** Estado inicial: hash > revisita (recorrente, sem ?n=, sem hash) > entrada. */
+/**
+ * Estado inicial: hash > entrada. Sempre entrada (main) na 1ª tela, mesmo em
+ * revisita — [AUTO-DECISION D-11] revertida, confirmado com o dono (V-8 em
+ * docs/VALIDACAO-PO.md). Deep-link explícito (`#vitrine`, `#produto=<sku>`)
+ * continua funcionando normalmente via `estadoDeHash`.
+ */
 export function estadoInicial(): EstadoTela {
   if (typeof location === 'undefined') return { tela: 'entrada' };
 
   const h = location.hash;
   if (h && h !== '#') return estadoDeHash(h);
 
-  try {
-    if (!new URLSearchParams(location.search).has('n') && eraRecorrente) {
-      // [AUTO-DECISION] D-11: a revisita começa na vitrine (pula a entrada).
-      // Isolado neste único ramo para virar um flip de 1 linha quando E2-02
-      // trouxer dado de tráfego.
-      return { tela: 'vitrine' };
-    }
-  } catch {
-    /* modo privado / URL exótica — cai no default */
-  }
   return { tela: 'entrada' };
 }
 
@@ -165,6 +142,22 @@ function elTela(tela: Tela): HTMLElement | null {
  */
 function elCategoria(cat: string): HTMLElement | null {
   return document.getElementById(`cat-${cat}`);
+}
+
+/**
+ * Filtro de catálogo por categoria (pedido: "uma sessao dedicada a cada
+ * uma, e nao mais todas juntas ... cada catalogo abra o seu respectivo").
+ * `cat` presente → esconde (`hidden`) as demais `<section class="grade-cat">`
+ * de `GradeCatalogo`, deixando só a categoria de destino; `cat` ausente
+ * (ex.: "Ver catálogo completo" do Rodapé) → reexibe todas. Puro DOM, sem
+ * CSS cross-component — `.grade-cat` é escopado a `GradeCatalogo.astro`.
+ */
+function aplicarFiltroCategoria(cat: string | undefined): void {
+  document
+    .querySelectorAll<HTMLElement>('#tela-vitrine .grade-cat')
+    .forEach((secao) => {
+      secao.hidden = Boolean(cat) && secao.id !== `cat-${cat}`;
+    });
 }
 
 /** Limpa `.ativo` de todos os <article> de detalhe; devolve o <article> do `sku` (ou null). */
@@ -228,6 +221,8 @@ export function aplicarEstado(
   let catEfetiva = efetivo.tela === 'vitrine' ? efetivo.cat : undefined;
   if (catEfetiva && !elCategoria(catEfetiva)) catEfetiva = undefined;
 
+  if (efetivo.tela === 'vitrine') aplicarFiltroCategoria(catEfetiva);
+
   app.dataset.tela = efetivo.tela;
 
   if (efetivo.tela === 'detalhe' && articleAtivo) {
@@ -249,10 +244,12 @@ export function aplicarEstado(
 
   if (opts?.rolar !== false && alvoScroll) {
     const suave = Boolean(opts?.suave) && !prefereMenosMovimento();
-    alvoScroll.scrollIntoView({
-      block: 'start',
-      behavior: suave ? 'smooth' : 'auto',
-    });
+    if (suave) {
+      // passagem entre seções com a curva/tempo do site (movimento.ts)
+      void rolarPara(alvoScroll);
+    } else {
+      alvoScroll.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }
   }
 
   estadoAtual =
@@ -273,15 +270,37 @@ function mesmoEstado(a: EstadoTela, b: EstadoTela): boolean {
   );
 }
 
-/** Transição por interação: aplicarEstado + history.pushState preservando search. */
+type DocumentoComTransicao = Document & { startViewTransition?: (cb: () => void) => unknown };
+
+/** View Transitions disponíveis E o usuário não pediu menos movimento? */
+function podeTransicionar(): boolean {
+  return (
+    typeof (document as DocumentoComTransicao).startViewTransition === 'function' &&
+    !prefereMenosMovimento()
+  );
+}
+
+/**
+ * Transição por interação: aplicarEstado + history.pushState preservando search.
+ *
+ * Com View Transitions (regras em global.css): a tela que sai recua e some, a que
+ * entra sobe e assenta — e a rolagem é instantânea, porque o próprio crossfade é a
+ * transição. O callback da API roda de forma ASSÍNCRONA (após capturar o estado
+ * antigo), então tudo que depende do estado novo — inclusive o `pushState` — fica
+ * dentro dele. Sem suporte: rolagem suave, como sempre foi.
+ */
 export function irPara(estado: EstadoTela): void {
   if (mesmoEstado(estado, estadoAtual)) return;
-  aplicarEstado(estado, { rolar: true, suave: true });
-  // URL = pathname + search + hash — `location.search` concatenado INTACTO e
-  // antes do fragmento (R-08 / RF-15.2). `hashDe` usa o estado efetivo aplicado.
-  const url =
-    location.pathname + location.search + hashDe(estadoAtual);
-  history.pushState({ ...estadoAtual }, '', url);
+  const comVT = podeTransicionar();
+  const aplicar = (): void => {
+    aplicarEstado(estado, { rolar: true, suave: !comVT });
+    // URL = pathname + search + hash — `location.search` concatenado INTACTO e
+    // antes do fragmento (R-08 / RF-15.2). `hashDe` usa o estado efetivo aplicado.
+    const url = location.pathname + location.search + hashDe(estadoAtual);
+    history.pushState({ ...estadoAtual }, '', url);
+  };
+  if (comVT) (document as DocumentoComTransicao).startViewTransition!(aplicar);
+  else aplicar();
 }
 
 // -- Listeners -----------------------------------------------------------
@@ -337,8 +356,12 @@ export function ligarNavegacaoTelas(): void {
   // gate nunca ativaria e a página seguiria empilhada (resiliência — CA 10).
   document.documentElement.classList.add('js');
 
-  // ADR-008 Fase 0: sem swap. A `#tela-vitrine` é blocos 2a/2b/2c + informações;
-  // a `GradeCatalogo` (Bloco 2c) fica sempre visível. `VitrineFoco` não existe.
+  // ADR-008 Fase 0: sem swap de TELA (`#tela-vitrine` continua os mesmos
+  // blocos 2a/2b/2c + informações; `VitrineFoco` não existe). Dentro do
+  // Bloco 2c (`GradeCatalogo`), porém, `aplicarFiltroCategoria` ESCONDE as
+  // categorias que não são o alvo quando a navegação chega com `cat` —
+  // pedido: "uma sessao dedicada a cada uma ... cada catalogo abra o seu
+  // respectivo". Sem `cat` (ex.: "Ver catálogo completo"), todas voltam.
 
   const inicial = estadoInicial();
   aplicarEstado(inicial, {

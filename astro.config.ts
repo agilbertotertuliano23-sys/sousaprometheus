@@ -1,4 +1,6 @@
 // @ts-check
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'astro/config';
 
 import preact from '@astrojs/preact';
@@ -26,6 +28,11 @@ export default defineConfig({
   //   - React:   /** @jsxImportSource react */
   integrations: [preact(), react()],
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
   }
 });

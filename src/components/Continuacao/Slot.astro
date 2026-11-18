@@ -1,0 +1,69 @@
+---
+/**
+ * Slot — o "espaço de componentes" das seções que continuam a Hero. Sem
+ * conteúdo, desenha uma moldura tracejada com cantos marcados e o rótulo do que
+ * deve entrar ali (foto, vídeo, componente). Com conteúdo (`<Slot>…</Slot>`),
+ * renderiza o filho no lugar do placeholder, sem mudar o layout.
+ *
+ * `cor` herda `currentColor` da seção (tinta no painel claro, papel no escuro).
+ * `cheio`: ocupa 100% do pai (absolute, inset 0) em vez de seguir `proporcao`.
+ */
+interface Props {
+  /** identificador estável do encaixe (vira `data-slot`). */
+  nome: string;
+  /** texto mono dentro da moldura, ex.: "COMPONENTE · FOTO 4:5". */
+  rotulo: string;
+  /** `aspect-ratio` CSS, ex.: "4 / 5". Ignorado com `cheio`. */
+  proporcao?: string;
+  cheio?: boolean;
+}
+
+const { nome, rotulo, proporcao = '4 / 5', cheio = false } = Astro.props;
+const ocupado = Astro.slots.has('default');
+---
+<div class:list={['slot', { 'slot--cheio': cheio, 'slot--ocupado': ocupado }]} data-slot={nome} style={cheio ? undefined : `--slot-ar:${proporcao}`}>
+  {ocupado ? <slot /> : (
+    <div class="slot-vazio" aria-hidden="true">
+      <span class="slot-rotulo">[ {rotulo} ]</span>
+    </div>
+  )}
+</div>
+
+<style>
+  .slot { position: relative; width: 100%; aspect-ratio: var(--slot-ar, 4 / 5); }
+  .slot--cheio { position: absolute; inset: 0; width: auto; aspect-ratio: auto; }
+  .slot--ocupado > :global(*) { width: 100%; height: 100%; }
+
+  .slot-vazio {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    border: 1.5px dashed color-mix(in srgb, currentColor 42%, transparent);
+    background:
+      repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 7%, transparent) 0 1px, transparent 1px 12px);
+    color: inherit;
+  }
+  /* cantos marcados, como mira de enquadramento */
+  .slot-vazio::before,
+  .slot-vazio::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    opacity: 0.7;
+  }
+  .slot-vazio::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+  .slot-vazio::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+
+  .slot-rotulo {
+    font-family: var(--f-mono, ui-monospace, monospace);
+    font-size: clamp(9px, 0.8vw, 12px);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 0.75;
+  }
+</style>
