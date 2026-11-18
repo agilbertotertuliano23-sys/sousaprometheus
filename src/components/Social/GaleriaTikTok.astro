@@ -138,6 +138,13 @@ const itensMasonry = thumbs.map((img, i) => ({
     box-sizing: border-box;
   }
 
+  /* celular: miniaturas quase coladas (3 colunas, como o perfil do TikTok) e a
+     grade usa mais da largura da tela. */
+  @media (max-width: 599px) {
+    .galeria-tiktok { padding-inline: 2.5vw; }
+    :global(.masonry-item) { padding: 1.5px; }
+  }
+
   :global(.masonry-item-inner) {
     position: relative;
     width: 100%;

@@ -104,8 +104,9 @@ const Masonry: React.FC<MasonryProps> = ({
 }) => {
   const columns = useMedia(
     ['(min-width:1500px)', '(min-width:1000px)', '(min-width:600px)', '(min-width:400px)'],
-    [5, 4, 3, 2],
-    1,
+    // Celular também em 3 colunas (grade do perfil do TikTok), como no desktop.
+    [5, 4, 3, 3],
+    3,
   );
 
   const [containerRef, { width }] = useMeasure<HTMLDivElement>();
@@ -147,7 +148,7 @@ const Masonry: React.FC<MasonryProps> = ({
   const grid = useMemo<GridItem[]>(() => {
     if (!width) return [];
     const colHeights = new Array(columns).fill(0);
-    const gap = 16;
+    const gap = width < 600 ? 6 : 16; // celular: miniaturas coladinhas, como no TikTok
     const totalGaps = (columns - 1) * gap;
     const columnWidth = (width - totalGaps) / columns;
 

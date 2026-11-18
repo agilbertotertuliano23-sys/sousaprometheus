@@ -34,7 +34,7 @@ export default function ContadoresTikTok({ itens }: Props) {
   const [reduzido, setReduzido] = useState(false);
 
   useEffect(() => {
-    const ajusta = () => setFs(Math.round(Math.min(120, Math.max(52, window.innerWidth * 0.085))));
+    const ajusta = () => setFs(Math.round(Math.min(120, Math.max(26, window.innerWidth * 0.085))));
     ajusta();
     window.addEventListener('resize', ajusta);
     setReduzido(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -50,7 +50,7 @@ export default function ContadoresTikTok({ itens }: Props) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center gap-12 md:flex-row md:items-start md:gap-24"
+      className="flex flex-row items-start justify-center gap-6 md:gap-24"
       style={{ fontFamily: "'Rubik', system-ui, sans-serif", color: '#fff' }}
     >
       {itens.map((item) => (
